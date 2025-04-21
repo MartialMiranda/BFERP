@@ -1,0 +1,53 @@
+{
+  "name": "erp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 5000",
+    "build": "next build --no-lint",
+    "start": "next start -p 5000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@hookform/resolvers": "^3.3.0",
+    "@mui/icons-material": "^5.17.1",
+    "@mui/material": "^5.17.1",
+    "@mui/system": "^5.17.1",
+    "@mui/x-date-pickers": "^5.0.20",
+    "@reduxjs/toolkit": "^2.0.0",
+    "@types/crypto-js": "^4.2.2",
+    "@types/react-beautiful-dnd": "^13.1.8",
+    "axios": "^1.6.0",
+    "crypto-js": "^4.2.0",
+    "dayjs": "^1.11.13",
+    "jwt-decode": "^4.0.0",
+    "next": "15.3.0",
+    "next-themes": "^0.2.1",
+    "react": "^19.0.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.55.0",
+    "react-qr-code": "^2.0.15",
+    "react-redux": "^9.0.0",
+    "recharts": "^2.15.2",
+    "redux-persist": "^6.0.0",
+    "redux-thunk": "^3.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5"
+  }
+}
