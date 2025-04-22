@@ -17,13 +17,18 @@ import {
   Cancel as CancelIcon 
 } from '@mui/icons-material';
 import QRCode from 'react-qr-code';
-import { verify2FA, selectAuthLoading, selectAuthError } from '../../store/slices/authSlice';
+import { verify2FA, selectAuthLoading, selectAuthError, selectUser } from '../../store/slices/authSlice';
 import { AppDispatch } from '../../store';
 import { TwoFactorResponse } from '../../types/auth';
 
 interface TwoFactorVerificationProps {
-  method: 'app' | 'email';
-  setupResponse: TwoFactorResponse;
+  method: 'app' | 'email' | null;
+  setupData: {
+    secret: string | null;
+    otpauth_url: string | null;
+    emailSent?: boolean;
+    verified: boolean;
+  };
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -33,25 +38,26 @@ interface TwoFactorVerificationProps {
  */
 export default function TwoFactorVerification({ 
   method, 
-  setupResponse, 
+  setupData, 
   onSuccess, 
   onCancel 
 }: TwoFactorVerificationProps) {
   const dispatch = useDispatch<AppDispatch>();
   const loading = useSelector(selectAuthLoading);
   const error = useSelector(selectAuthError);
+  const user = useSelector(selectUser);
   
   const [verificationCode, setVerificationCode] = useState('');
   const [codeError, setCodeError] = useState('');
   const [qrValue, setQrValue] = useState<string | null>(null);
 
-  // Establecer el valor del QR cuando el componente se monta o cambia el setupResponse
+  // Establecer el valor del QR cuando el componente se monta o cambia setupData
   useEffect(() => {
-    if (method === 'app' && setupResponse.otpauth_url) {
-      setQrValue(setupResponse.otpauth_url);
-      console.log('QR URL:', setupResponse.otpauth_url); // Para debugging
+    if (method === 'app' && setupData.otpauth_url) {
+      setQrValue(setupData.otpauth_url);
+      console.log('QR URL establecido en el componente');
     }
-  }, [method, setupResponse]);
+  }, [method, setupData]);
   
   /**
    * Handle verification code change
@@ -71,23 +77,38 @@ export default function TwoFactorVerification({
       return;
     }
     
+    if (!user || !user.id) {
+      console.error('No hay usuario o ID de usuario disponible para verificar 2FA');
+      setCodeError('Error de identificación de usuario');
+      return;
+    }
+
     try {
+      console.log('Verificando código 2FA:', { 
+        code: verificationCode, 
+        userId: user.id,
+        method: method || 'app'
+      });
+      
       const resultAction = await dispatch(verify2FA({ 
         code: verificationCode, 
-        method 
+        userId: user.id,
+        method: method || 'app'
       }));
       
       if (verify2FA.fulfilled.match(resultAction)) {
+        console.log('Verificación 2FA exitosa');
         onSuccess();
       }
     } catch (error) {
+      console.error('Error en verificación 2FA:', error);
       // Error will be handled by the reducer
     }
   };
   
   return (
     <Box className="space-y-6">
-      {method === 'app' && qrValue && (
+      {method === 'app' && (qrValue || setupData.otpauth_url) && (
         <Box className="flex flex-col items-center">
           <Typography variant="h6" className="mb-3 text-center">
             Escanea este código QR con tu aplicación de autenticación
@@ -103,13 +124,13 @@ export default function TwoFactorVerification({
               <QRCode
                 size={256}
                 style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                value={qrValue}
+                value={qrValue || setupData.otpauth_url || ''}
                 viewBox={`0 0 256 256`}
               />
             </div>
           </Paper>
           
-          {setupResponse.secret && (
+          {setupData.secret && (
             <Box className="mt-2 mb-4 text-center">
               <Typography variant="subtitle2" className="mb-1">
                 O introduce manualmente esta clave secreta:
@@ -118,14 +139,14 @@ export default function TwoFactorVerification({
                 variant="body2" 
                 className="font-mono bg-gray-100 p-2 rounded"
               >
-                {setupResponse.secret}
+                {setupData.secret}
               </Typography>
             </Box>
           )}
         </Box>
       )}
       
-      {method === 'email' && setupResponse.emailSent && (
+      {method === 'email' && setupData.emailSent && (
         <Box className="text-center mb-4">
           <Typography variant="body1">
             Se ha enviado un código de verificación a tu correo electrónico.

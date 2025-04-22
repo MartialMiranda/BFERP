@@ -2,19 +2,40 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AxiosError } from 'axios';
 import { RootState } from '../index';
 import { authService } from '../../services/authService';
-import { User, AuthState, LoginCredentials, RegisterData, TwoFactorSetup, TwoFactorVerification, AuthError } from '../../types/auth';
+import { User, AuthState, LoginCredentials, RegisterData, TwoFactorSetup, TwoFactorVerification, AuthError, TwoFactorSetupState } from '../../types/auth';
 import { secureStorage } from '../../utils/storageUtils';
 import { ApiErrorResponse } from '../../types/common';
 
 // Inicializar estado desde almacenamiento
+// Type guard para validar User
+function isUser(obj: any): obj is User {
+  return (
+    obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.nombre === 'string' &&
+    typeof obj.email === 'string' &&
+    (obj.rol === 'admin' || obj.rol === 'gestor' || obj.rol === 'usuario') &&
+    typeof obj.tiene_2fa === 'boolean'
+  );
+}
+
 const initAuthState = (): AuthState => {
+  // Estado inicial vacío para el setup de 2FA
+  const emptyTwoFactorSetup: TwoFactorSetupState = {
+    isActivating: false,
+    qrCode: null,
+    secret: null,
+    method: null,
+    pendingVerification: false
+  };
+
   try {
     // Solo ejecutar en el cliente (no durante SSR)
     if (typeof window !== 'undefined') {
       const { token, refreshToken, userData } = secureStorage.getAuthData();
       console.log('Initializing auth state from storage');
       
-      if (token && userData) {
+      if (token && userData && isUser(userData)) {
         return {
           user: userData,
           token,
@@ -23,6 +44,7 @@ const initAuthState = (): AuthState => {
           loading: false,
           error: null,
           requires2FA: false,
+          twoFactorSetup: emptyTwoFactorSetup
         };
       }
     }
@@ -39,10 +61,12 @@ const initAuthState = (): AuthState => {
     loading: false,
     error: null,
     requires2FA: false,
+    twoFactorSetup: emptyTwoFactorSetup
   };
 };
 
 // Inicializar el estado con datos almacenados si están disponibles
+// Inicializar el estado de autenticación
 const initialState: AuthState = initAuthState();
 
 /**
@@ -52,28 +76,46 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      // Asegurarse de que rememberMe tenga un valor booleano explícito
-      const rememberMe = credentials.rememberMe === true;
-      console.log('Login attempt with rememberMe:', rememberMe);
-      
       const response = await authService.login(credentials);
-      
-      // Save auth data to storage with persistence based on "rememberMe" flag
+      if (response.requires2FA) {
+        // No guardar tokens ni user todavía, solo userId temporal
+        return {
+          requires2FA: true,
+          userId: response.userId,
+          metodo_2fa: response.metodo_2fa,
+        };
+      }
       if (response.tokens && response.user) {
+        // Aseguramos que ambos tokens existen antes de guardar
+        if (!response.tokens.accessToken || !response.tokens.refreshToken) {
+          return rejectWithValue({ message: 'Error: tokens incompletos recibidos del servidor' });
+        }
+
+        console.log('Guardando tokens en storage:', {
+          accessToken: response.tokens.accessToken ? 'Presente' : 'Ausente',
+          refreshToken: response.tokens.refreshToken ? 'Presente' : 'Ausente'
+        });
+        
+        // Guardamos explícitamente en ambos storage para mayor seguridad
         secureStorage.saveAuthData(
           response.tokens.accessToken,
           response.tokens.refreshToken,
           response.user,
-          rememberMe // Usar el valor explícito de rememberMe
+          credentials.rememberMe === true
         );
-        console.log('Login successful, tokens saved to storage, rememberMe:', rememberMe);
+        return {
+          tokens: response.tokens,
+          user: response.user,
+          requires2FA: false
+        };
       }
-      
-      return response;
+      console.error('Respuesta inválida del backend:', response);
+      return rejectWithValue({ message: 'Respuesta inválida del backend al iniciar sesión' });
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorResponse>;
+      console.error('Error de login:', axiosError);
       return rejectWithValue(
-        axiosError.response?.data || { message: 'Error al iniciar sesión' }
+        axiosError.response?.data || { message: 'Error al iniciar sesión. Verifique sus credenciales.' }
       );
     }
   }
@@ -120,12 +162,14 @@ export const refreshToken = createAsyncThunk(
       
       if (response.accessToken) {
         // Guardar los nuevos tokens manteniendo la preferencia de persistencia
-        secureStorage.saveAuthData(
-          response.accessToken,
-          response.refreshToken || currentRefreshToken, // Usar el nuevo refresh token o mantener el actual
-          userData,
-          rememberMe // Mantener la misma configuración de persistencia
-        );
+        if (userData) {
+          secureStorage.saveAuthData(
+            response.accessToken,
+            response.refreshToken || currentRefreshToken, // Usar el nuevo refresh token o mantener el actual
+            userData,
+            rememberMe // Mantener la misma configuración de persistencia
+          );
+        }
         
         console.log('Tokens refreshed and saved successfully');
       }
@@ -172,17 +216,30 @@ export const logout = createAsyncThunk(
  */
 export const enable2FA = createAsyncThunk(
   'auth/enable2FA',
-  async (method: 'app' | 'email', { getState, rejectWithValue }) => {
+  async (method: 'app' | 'email', { getState, dispatch, rejectWithValue }) => {
     try {
       const { auth } = getState() as RootState;
-      
       if (!auth.token) {
         return rejectWithValue({ message: 'No hay token de autenticación disponible' });
       }
-      
       const setup: TwoFactorSetup = { method };
       const response = await authService.enable2FA(setup, auth.token);
-      return response;
+      // Actualizar el usuario localmente (no hay endpoint para refrescar)
+      if (auth.user) {
+        const updatedUser = {
+          ...auth.user,
+          tiene_2fa: true,
+          metodo_2fa: method
+        };
+        dispatch(setUser(updatedUser));
+      }
+      return {
+        ...response,
+        method: method,
+        qrCode: response.otpauth_url || null,
+        secret: response.secret || null,
+        pendingVerification: true
+      };
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
         return rejectWithValue(error.response.data);
@@ -197,22 +254,35 @@ export const enable2FA = createAsyncThunk(
  */
 export const verify2FA = createAsyncThunk(
   'auth/verify2FA',
-  async (verification: { code: string; method: 'app' | 'email' }, { getState, rejectWithValue }) => {
+  async (verification: { code: string; userId: string; method: 'app' | 'email' }, { getState, rejectWithValue }) => {
     try {
       const { auth } = getState() as RootState;
-      
-      if (!auth.token || !auth.user) {
+      // userId puede venir de auth.user.id (si fue guardado en login)
+      const userId = auth.user?.id;
+      if (!userId) {
         return rejectWithValue({ message: 'No hay sesión activa' });
       }
-      
       const verificationData: TwoFactorVerification = {
         code: verification.code,
-        userId: auth.user.id,
+        userId,
         method: verification.method
       };
-      
       const response = await authService.verify2FA(verificationData);
-      return response;
+      if (response.tokens && response.user) {
+        // Guardar y devolver los datos completos
+        secureStorage.saveAuthData(
+          response.tokens.accessToken,
+          response.tokens.refreshToken,
+          response.user,
+          true // Forzamos rememberMe para 2FA, opcional: puedes guardar rememberMe en auth
+        );
+        return {
+          tokens: response.tokens,
+          user: response.user,
+          requires2FA: false
+        };
+      }
+      return rejectWithValue({ message: 'Respuesta inválida del backend al verificar 2FA' });
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
         return rejectWithValue(error.response.data);
@@ -227,15 +297,22 @@ export const verify2FA = createAsyncThunk(
  */
 export const disable2FA = createAsyncThunk(
   'auth/disable2FA',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState, dispatch, rejectWithValue }) => {
     try {
       const { auth } = getState() as RootState;
-      
       if (!auth.token) {
         return rejectWithValue({ message: 'No hay token de autenticación disponible' });
       }
-      
       await authService.disable2FA(auth.token);
+      // Actualizar el usuario localmente
+      if (auth.user) {
+        const updatedUser = {
+          ...auth.user,
+          tiene_2fa: false,
+          metodo_2fa: undefined
+        };
+        dispatch(setUser(updatedUser));
+      }
       return { disabled: true };
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
@@ -307,6 +384,13 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
       state.requires2FA = false;
+      state.twoFactorSetup = {
+        isActivating: false,
+        qrCode: null,
+        secret: null,
+        method: null,
+        pendingVerification: false
+      };
       
       // Clear stored credentials using secureStorage
       secureStorage.clearAuthStorage();
@@ -327,6 +411,17 @@ const authSlice = createSlice({
       
       console.log('Auth state and storage completely cleared');
     },
+
+    cancelTwoFactorSetup(state) {
+      // Resetear el estado de configuración del 2FA
+      state.twoFactorSetup = {
+        isActivating: false,
+        qrCode: null,
+        secret: null,
+        method: null,
+        pendingVerification: false
+      };
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -334,13 +429,74 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(login.fulfilled, (state, action) => {
+      .addCase(verify2FA.fulfilled, (state, action) => {
+        state.loading = false;
+        // Actualizar usuario después de verificación exitosa
+        if (action.payload && action.payload.user) {
+          state.user = action.payload.user;
+          
+          // Si la verificación es exitosa y el usuario existe, actualizar el estado de 2FA
+          if (state.user && state.user.tiene_2fa) {
+            // Limpiar estado de configuración de 2FA
+            state.twoFactorSetup = {
+              isActivating: false,
+              qrCode: null,
+              secret: null,
+              method: null,
+              pendingVerification: false
+            };
+          }
+        }
+      })
+      .addCase(enable2FA.fulfilled, (state, action) => {
         state.loading = false;
         
-        if (action.payload.requires2FA) {
+        // Guardar información de configuración de 2FA
+        if (action.payload) {
+          state.twoFactorSetup = {
+            isActivating: true,
+            qrCode: action.payload.qrCode || null,
+            secret: action.payload.secret || null,
+            method: action.payload.method || 'app',
+            pendingVerification: true
+          };
+          
+          // Si el servidor devuelve usuario actualizado, actualizarlo
+          if (action.payload.user) {
+            state.user = action.payload.user;
+          }
+        }
+      })
+      .addCase(disable2FA.fulfilled, (state, action) => {
+        // Actualizar el usuario localmente para reflejar que 2FA está deshabilitado
+        if (state.user) {
+          state.user.tiene_2fa = false;
+          state.user.metodo_2fa = undefined;
+          // Actualizar storage también
+          const { rememberMe, userData } = secureStorage.getAuthData();
+          if (userData) {
+            userData.tiene_2fa = false;
+            userData.metodo_2fa = undefined;
+            secureStorage.saveAuthData(
+              state.token || '',
+              state.refreshToken || '',
+              userData,
+              rememberMe
+            );
+          }
+        }
+        state.loading = false;
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload && action.payload.requires2FA) {
           state.requires2FA = true;
+          // Solo guardar userId temporal
           state.user = { id: action.payload.userId } as User;
-        } else if (action.payload.tokens && action.payload.user) {
+          state.token = null;
+          state.refreshToken = null;
+          state.isAuthenticated = false;
+        } else if (action.payload && action.payload.tokens && action.payload.user) {
           state.token = action.payload.tokens.accessToken;
           state.refreshToken = action.payload.tokens.refreshToken;
           state.user = action.payload.user;
@@ -413,7 +569,7 @@ const authSlice = createSlice({
 });
 
 // Export actions and reducer
-export const { clearError, setUser, setCredentials, clearAuth } = authSlice.actions;
+export const { clearError, setUser, setCredentials, clearAuth, cancelTwoFactorSetup } = authSlice.actions;
 export default authSlice.reducer;
 
 // Selectors
@@ -423,3 +579,4 @@ export const selectIsAuthenticated = (state: RootState) => state.auth.isAuthenti
 export const selectAuthLoading = (state: RootState) => state.auth.loading;
 export const selectAuthError = (state: RootState) => state.auth.error;
 export const selectRequires2FA = (state: RootState) => state.auth.requires2FA;
+export const selectTwoFactorSetup = (state: RootState) => state.auth.twoFactorSetup;

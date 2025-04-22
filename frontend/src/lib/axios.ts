@@ -1,4 +1,10 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+
+// Define API error response structure
+interface ApiErrorResponse {
+  message?: string;
+  [key: string]: any;
+}
 import { store } from '../store';
 import { clearAuth } from '../store/slices/authSlice';
 import { addNotification } from '../store/slices/uiSlice';
@@ -33,31 +39,26 @@ apiClient.interceptors.request.use(
     // 1. Primero del estado de Redux
     let token = store.getState().auth.token;
 
-    // 2. Si no está en el estado, intentar obtenerlo del almacenamiento
+    // 2. Si no está en el estado, intentar obtenerlo del almacenamiento seguro
     if (!token && typeof window !== 'undefined') {
-      // Verificar primero en sessionStorage y luego en localStorage
-      token = sessionStorage.getItem('erp_auth_token') || localStorage.getItem('erp_auth_token');
+      // Usar secureStorage para obtener datos encriptados
+      const { token: secureToken, refreshToken, userData } = secureStorage.getAuthData();
+      token = secureToken;
       
       // Si encontramos un token pero no está en el estado, podemos intentar restaurar la sesión
-      if (token) {
+      if (token && userData && refreshToken) {
         try {
-          const userData = sessionStorage.getItem('erp_user_data') || localStorage.getItem('erp_user_data');
-          const refreshToken = sessionStorage.getItem('erp_refresh_token') || localStorage.getItem('erp_refresh_token');
-          const userDataObj = userData ? JSON.parse(userData) : null;
-          
-          if (userDataObj && refreshToken) {
-            // Restaurar la sesión en Redux (esto es asíncrono, pero el token ya lo tenemos para esta petición)
-            setTimeout(() => {
-              store.dispatch({
-                type: 'auth/setCredentials',
-                payload: {
-                  token,
-                  refreshToken,
-                  user: userDataObj
-                }
-              });
-            }, 0);
-          }
+          // Restaurar la sesión en Redux (esto es asíncrono, pero el token ya lo tenemos para esta petición)
+          setTimeout(() => {
+            store.dispatch({
+              type: 'auth/setCredentials',
+              payload: {
+                token,
+                refreshToken,
+                user: userData
+              }
+            });
+          }, 0);
         } catch (error) {
           console.error('Error restaurando sesión:', error);
         }
@@ -80,7 +81,7 @@ apiClient.interceptors.request.use(
 // Response interceptor - maneja los errores de autenticación y refresca tokens
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
+  async (error: AxiosError<ApiErrorResponse>) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
     
     // Si no hay configuración de la petición original, rechazar directamente
@@ -102,13 +103,22 @@ apiClient.interceptors.response.use(
         // 1. Del estado de Redux
         let refreshToken = store.getState().auth.refreshToken;
 
-        // 2. Si no está en el estado, intentar obtenerlo del almacenamiento
+        // 2. Si no está en el estado, intentar obtenerlo del almacenamiento seguro
         if (!refreshToken && typeof window !== 'undefined') {
-          refreshToken = sessionStorage.getItem('erp_refresh_token') || localStorage.getItem('erp_refresh_token');
+          refreshToken = secureStorage.getAuthData().refreshToken;
         }
 
+        // Verificar si hay refresh token disponible
         if (!refreshToken) {
-          throw new Error('No refresh token available');
+          console.error('No se encontró refresh token en el estado ni en el almacenamiento');
+          // En lugar de causar un error fatal, redirigir a login
+          store.dispatch(clearAuth());
+          store.dispatch(addNotification({
+            message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+            severity: 'warning'
+          }));
+          // Rechazamos la promesa para que la petición original falle, pero con mensaje más claro
+          return Promise.reject(new Error('Sesión expirada, por favor inicia sesión nuevamente.'));
         }
 
         // Realizar una petición para refrescar el token
@@ -125,35 +135,25 @@ apiClient.interceptors.response.use(
           throw new Error('No token received from refresh request');
         }
 
-        // Verificar si se debe recordar la sesión
-        const rememberMeStr = localStorage.getItem('erp_remember_me');
+        // Obtener datos del usuario usando secureStorage
+        let userData = secureStorage.getAuthData().userData;
+        
+        // Obtener la configuración de rememberMe
+        const rememberMeStr = secureStorage.getItem(secureStorage.STORAGE_KEYS.REMEMBER_ME, 'local');
         const rememberMe = rememberMeStr === 'true';
         
-        // Obtener datos del usuario
-        let userData = null;
-        try {
-          const userDataStr = sessionStorage.getItem('erp_user_data') || localStorage.getItem('erp_user_data');
-          if (userDataStr) {
-            userData = JSON.parse(userDataStr);
-          }
-        } catch (e) {
-          console.error('Error parsing user data:', e);
-        }
-
-        // Siempre guardar en sessionStorage
-        sessionStorage.setItem('erp_auth_token', newAccessToken);
-        sessionStorage.setItem('erp_refresh_token', newRefreshToken || refreshToken);
+        // Guardar nuevos tokens usando secureStorage
         if (userData) {
-          sessionStorage.setItem('erp_user_data', JSON.stringify(userData));
-        }
-        
-        // Si rememberMe es true, también guardar en localStorage
-        if (rememberMe) {
-          localStorage.setItem('erp_auth_token', newAccessToken);
-          localStorage.setItem('erp_refresh_token', newRefreshToken || refreshToken);
-          if (userData) {
-            localStorage.setItem('erp_user_data', JSON.stringify(userData));
-          }
+          secureStorage.saveAuthData(
+            newAccessToken,
+            newRefreshToken || refreshToken,
+            userData,
+            rememberMe
+          );
+        } else {
+          // Si no hay datos de usuario, al menos actualizamos los tokens
+          secureStorage.setItem(secureStorage.STORAGE_KEYS.AUTH_TOKEN, newAccessToken, rememberMe ? 'local' : 'session');
+          secureStorage.setItem(secureStorage.STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken || refreshToken, rememberMe ? 'local' : 'session');
         }
 
         // Actualizar el store con los nuevos tokens
@@ -195,7 +195,7 @@ apiClient.interceptors.response.use(
     }
 
     // Para otros errores, mostrar notificación si hay mensaje
-    if (error.response?.data?.message) {
+    if (error.response?.data && error.response.data.message) {
       store.dispatch(addNotification({
         message: error.response.data.message,
         severity: 'error'

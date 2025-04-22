@@ -18,6 +18,7 @@ import {
   Key as KeyIcon
 } from '@mui/icons-material';
 import TwoFactorSettings from '../../../components/auth/TwoFactorSettings';
+import PasswordChangeForm from './PasswordChangeForm';
 import { selectUser } from '../../../store/slices/authSlice';
 
 interface TabPanelProps {
@@ -137,10 +138,8 @@ export default function SecurityPage() {
                 </Typography>
                 <Divider className="mb-6" />
                 <Card className="p-6">
-                  <Typography variant="body1">
-                    La funcionalidad de cambio de contraseña estará disponible próximamente.
-                  </Typography>
-                </Card>
+  <PasswordChangeForm />
+</Card>
               </Box>
             </TabPanel>
           </Paper>

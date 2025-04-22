@@ -139,9 +139,27 @@ const saveAuthData = (
   userData: GenericUser,
   persistSession: boolean = true
 ): void => {
-  // Asegurarse de tener todos los datos necesarios
-  if (!token || !refreshToken || !userData) {
-    console.warn('Attempt to save incomplete auth data');
+  // Verificación y logging más estrictos de los datos de entrada
+  if (!token) {
+    console.error('Error guardando auth data: token no proporcionado');
+    return;
+  }
+  if (!refreshToken) {
+    console.error('Error guardando auth data: refreshToken no proporcionado');
+    return;
+  }
+  if (!userData) {
+    console.error('Error guardando auth data: userData no proporcionado');
+    return;
+  }
+  
+  // Verificar que los valores no sean strings vacíos
+  if (token.trim() === '') {
+    console.error('Error guardando auth data: token es una string vacía');
+    return;
+  }
+  if (refreshToken.trim() === '') {
+    console.error('Error guardando auth data: refreshToken es una string vacía');
     return;
   }
 
@@ -153,24 +171,41 @@ const saveAuthData = (
   // Store remember me preference
   setItem(STORAGE_KEYS.REMEMBER_ME, persistSession.toString(), 'local');
   
-  // Siempre guardar en sessionStorage para la sesión actual del navegador
-  setItem(STORAGE_KEYS.AUTH_TOKEN, token, 'session');
-  setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, 'session');
-  setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData), 'session');
-  
-  // Si se activa la persistencia, también guardar en localStorage
-  if (persistSession) {
-    setItem(STORAGE_KEYS.AUTH_TOKEN, token, 'local');
-    setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, 'local');
-    setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData), 'local');
+  try {
+    // Verificar que los storages están disponibles antes de intentar guardar
+    const sessionAvailable = isStorageAvailable('session');
+    const localAvailable = isStorageAvailable('local');
     
-    console.log('Auth data saved to persistent storage (localStorage)');
-  } else {
-    // Si no persiste, asegurarse de limpiar localStorage
-    removeItem(STORAGE_KEYS.AUTH_TOKEN, 'local');
-    removeItem(STORAGE_KEYS.REFRESH_TOKEN, 'local');
-    removeItem(STORAGE_KEYS.USER_DATA, 'local');
-    console.log('Auth data saved to session storage only (sessionStorage)');
+    if (!sessionAvailable && !localAvailable) {
+      console.error('Error guardando auth data: ningún storage disponible');
+      return;
+    }
+    
+    // Serializar userData
+    const userDataString = JSON.stringify(userData);
+    
+    // Siempre guardar en sessionStorage para la sesión actual del navegador
+    if (sessionAvailable) {
+      setItem(STORAGE_KEYS.AUTH_TOKEN, token, 'session');
+      setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, 'session');
+      setItem(STORAGE_KEYS.USER_DATA, userDataString, 'session');
+      console.log('Tokens guardados en sessionStorage');
+    }
+    
+    // Si se activa la persistencia, también guardar en localStorage
+    if (persistSession && localAvailable) {
+      setItem(STORAGE_KEYS.AUTH_TOKEN, token, 'local');
+      setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, 'local');
+      setItem(STORAGE_KEYS.USER_DATA, userDataString, 'local');
+      console.log('Tokens guardados en localStorage (persistentes)');
+    } else if (localAvailable) {
+      // Si no persiste, asegurarse de limpiar localStorage
+      removeItem(STORAGE_KEYS.AUTH_TOKEN, 'local');
+      removeItem(STORAGE_KEYS.REFRESH_TOKEN, 'local');
+      removeItem(STORAGE_KEYS.USER_DATA, 'local');
+    }
+  } catch (error) {
+    console.error('Error al guardar datos de autenticación:', error);
   }
 };
 

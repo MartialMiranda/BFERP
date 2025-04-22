@@ -293,4 +293,59 @@ router.post(
   }
 );
 
+/**
+ * @route   PUT /api/auth/change-password
+ * @desc    Cambiar la contraseña del usuario autenticado
+ * @access  Private
+ */
+router.put(
+  '/change-password',
+  [
+    verifyToken,
+    body('currentPassword').notEmpty().withMessage('La contraseña actual es obligatoria'),
+    body('newPassword').isLength({ min: 8 }).withMessage('La nueva contraseña debe tener al menos 8 caracteres'),
+    body('confirmNewPassword').custom((value, { req }) => {
+      if (value !== req.body.newPassword) {
+        throw new Error('Las contraseñas no coinciden');
+      }
+      return true;
+    })
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      const userId = req.user.id;
+      const { currentPassword, newPassword } = req.body;
+      // Obtener hash actual de la base de datos
+      const user = await require('../config/database').db.oneOrNone('SELECT contrasena FROM usuarios WHERE id = $1', [userId]);
+      if (!user) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+      // Verificar contraseña actual
+      const bcrypt = require('bcrypt');
+      const isMatch = await bcrypt.compare(currentPassword, user.contrasena);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'La contraseña actual es incorrecta' });
+      }
+      // Prevenir que la nueva contraseña sea igual a la anterior
+      const isSame = await bcrypt.compare(newPassword, user.contrasena);
+      if (isSame) {
+        return res.status(400).json({ message: 'La nueva contraseña debe ser diferente a la anterior' });
+      }
+      // Hashear nueva contraseña
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+      // Actualizar en la base de datos
+      await require('../config/database').db.none('UPDATE usuarios SET contrasena = $1, actualizado_en = NOW() WHERE id = $2', [hashedPassword, userId]);
+      res.status(200).json({ message: 'Contraseña actualizada correctamente' });
+    } catch (error) {
+      logger.error(`Error al cambiar contraseña: ${error.message}`);
+      res.status(500).json({ message: 'Error del servidor al cambiar la contraseña' });
+    }
+  }
+);
+
 module.exports = router;

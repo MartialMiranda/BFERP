@@ -2,6 +2,7 @@
  * User interface representing the authenticated user
  */
 export interface User {
+  [key: string]: unknown;
   id: string;
   nombre: string;
   email: string;
@@ -21,6 +22,7 @@ export interface AuthState {
   loading: boolean;
   error: { message: string } | null;
   requires2FA: boolean;
+  twoFactorSetup: TwoFactorSetupState;
 }
 
 /**
@@ -80,6 +82,17 @@ export interface RefreshTokenResponse {
  */
 export interface TwoFactorSetup {
   method: 'app' | 'email';
+}
+
+/**
+ * Two-factor authentication setup state interface
+ */
+export interface TwoFactorSetupState {
+  isActivating: boolean;
+  qrCode: string | null;
+  secret: string | null;
+  method: 'app' | 'email' | null;
+  pendingVerification: boolean;
 }
 
 /**

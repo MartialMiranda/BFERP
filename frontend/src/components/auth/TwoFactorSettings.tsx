@@ -25,12 +25,12 @@ import {
   disable2FA, 
   selectUser, 
   selectAuthLoading,
-  selectAuthError 
+  selectAuthError,
+  selectTwoFactorSetup
 } from '../../store/slices/authSlice';
 import { AppDispatch } from '../../store';
 import TwoFactorVerification from './TwoFactorVerification';
 import { addNotification } from '../../store/slices/uiSlice';
-import { TwoFactorResponse } from '../../types/auth';
 
 /**
  * Component for managing Two-Factor Authentication settings
@@ -40,16 +40,21 @@ export default function TwoFactorSettings() {
   const user = useSelector(selectUser);
   const loading = useSelector(selectAuthLoading);
   const error = useSelector(selectAuthError);
+  const twoFactorSetup = useSelector(selectTwoFactorSetup);
 
   const [method, setMethod] = useState<'app' | 'email'>('app');
-  const [setupResponse, setSetupResponse] = useState<TwoFactorResponse | null>(null);
-  const [showVerification, setShowVerification] = useState(false);
-
-  // Reset state when component mounts or user changes
+  
+  // Determinar si estamos en proceso de verificación basado en el estado global
+  const showVerification = twoFactorSetup?.pendingVerification || false;
+  
+  // Resetear el método cuando cambia el usuario
   useEffect(() => {
-    setShowVerification(false);
-    setSetupResponse(null);
-  }, [user?.id]);
+    if (!twoFactorSetup?.isActivating) {
+      setMethod('app');
+    } else if (twoFactorSetup?.method) {
+      setMethod(twoFactorSetup.method);
+    }
+  }, [user?.id, twoFactorSetup]);
 
   /**
    * Handle change of 2FA method
@@ -63,12 +68,11 @@ export default function TwoFactorSettings() {
    */
   const handleEnable2FA = async () => {
     try {
+      console.log('Activando 2FA con método:', method);
       const resultAction = await dispatch(enable2FA(method));
       
       if (enable2FA.fulfilled.match(resultAction)) {
-        setSetupResponse(resultAction.payload);
-        setShowVerification(true);
-        
+        // El estado de twoFactorSetup ya se gestiona en el slice de autenticación
         dispatch(addNotification({
           message: method === 'app' 
             ? 'Escanea el código QR con tu aplicación de autenticación' 
@@ -77,6 +81,7 @@ export default function TwoFactorSettings() {
         }));
       }
     } catch (error) {
+      console.error('Error activando 2FA:', error);
       dispatch(addNotification({
         message: 'Error al configurar la autenticación de dos factores',
         severity: 'error',
@@ -92,8 +97,7 @@ export default function TwoFactorSettings() {
       const resultAction = await dispatch(disable2FA());
       
       if (disable2FA.fulfilled.match(resultAction)) {
-        setShowVerification(false);
-        setSetupResponse(null);
+        dispatch({ type: 'auth/cancelTwoFactorSetup' });
         
         dispatch(addNotification({
           message: 'La autenticación de dos factores ha sido desactivada',
@@ -112,9 +116,6 @@ export default function TwoFactorSettings() {
    * Handle verification success
    */
   const handleVerificationSuccess = () => {
-    setShowVerification(false);
-    setSetupResponse(null);
-    
     dispatch(addNotification({
       message: 'La autenticación de dos factores ha sido activada correctamente',
       severity: 'success',
@@ -125,8 +126,9 @@ export default function TwoFactorSettings() {
    * Handle verification cancellation
    */
   const handleCancelVerification = () => {
-    setShowVerification(false);
-    setSetupResponse(null);
+    // El estado principal se actualizará a través de una acción de redux
+    // para asegurar que todo está sincronizado
+    dispatch({ type: 'auth/cancelTwoFactorSetup' });
   };
 
   // If user is not available, show loading
@@ -215,10 +217,15 @@ export default function TwoFactorSettings() {
         </Box>
       )}
 
-      {showVerification && setupResponse && (
+      {showVerification && twoFactorSetup && (
         <TwoFactorVerification
-          method={method}
-          setupResponse={setupResponse}
+          method={twoFactorSetup.method || method}
+          setupData={{
+            secret: twoFactorSetup.secret || '',
+            otpauth_url: twoFactorSetup.qrCode || '',
+            emailSent: twoFactorSetup.method === 'email',
+            verified: false
+          }}
           onSuccess={handleVerificationSuccess}
           onCancel={handleCancelVerification}
         />

@@ -20,7 +20,16 @@ export default function AppLayout({
   useEffect(() => {
     const { token, refreshToken, userData, rememberMe } = secureStorage.getAuthData();
     if (token && refreshToken && userData) {
-      dispatch(setCredentials({ user: userData, token, refreshToken, rememberMe }));
+      // Asegurarse de que userData tenga las propiedades requeridas de User
+      const user: import('../../types/auth').User = {
+        id: userData.id as string,
+        nombre: (userData as any).nombre ?? '',
+        email: (userData as any).email ?? '',
+        rol: (userData as any).rol ?? 'usuario',
+        tiene_2fa: (userData as any).tiene_2fa ?? false,
+        metodo_2fa: (userData as any).metodo_2fa,
+      };
+      dispatch(setCredentials({ user, token, refreshToken, rememberMe }));
     }
   }, [dispatch]);
 

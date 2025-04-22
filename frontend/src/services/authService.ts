@@ -1,3 +1,5 @@
+// ATENCIÓN: No existe endpoint /api/auth/profile en el backend.
+// El usuario autenticado debe obtenerse SOLO desde el storage local (secureStorage) o del estado global (Redux).
 import apiClient from '../lib/axios';
 import {
   LoginCredentials,
@@ -8,6 +10,7 @@ import {
   TwoFactorSetup,
   TwoFactorVerification,
 } from '../types/auth';
+import { secureStorage } from '../utils/storageUtils';
 
 /**
  * Service for authentication-related API endpoints
@@ -160,4 +163,22 @@ export const authService = {
       return false;
     }
   },
+
+  /**
+   * Cambiar la contraseña del usuario autenticado
+   * @param currentPassword Contraseña actual
+   * @param newPassword Nueva contraseña
+   * @param confirmNewPassword Confirmación de la nueva contraseña
+   * @returns Mensaje de éxito o error
+   */
+  async changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<{ message: string }> {
+    const response = await apiClient.put<{ message: string }>('/auth/change-password', {
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
+    });
+    return response.data;
+  },
+
+
 };

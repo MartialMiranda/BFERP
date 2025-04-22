@@ -73,24 +73,28 @@ export default function LoginPage() {
       setLoading(true);
       
       // Si estamos verificando 2FA, asegurarse de enviar las credenciales guardadas
-      const loginData = requires2FA && userCredentials
-        ? { 
-            email: userCredentials.email, 
-            password: userCredentials.password,
-            code_2fa: data.code_2fa,
-            rememberMe: userCredentials.rememberMe
-          }
-        : {
-            ...data,
-            rememberMe: data.rememberMe
-          };
+      let loginData;
       
-      // Si no estamos en modo 2FA, guardar las credenciales por si las necesitamos después
-      if (!requires2FA) {
+      if (requires2FA && userCredentials) {
+        console.log('Enviando código 2FA para verificación:', data.code_2fa);
+        loginData = { 
+          email: userCredentials.email, 
+          password: userCredentials.password,
+          code_2fa: data.code_2fa,
+          rememberMe: userCredentials.rememberMe
+        };
+      } else {
+        // Login normal sin 2FA
+        loginData = {
+          ...data,
+          rememberMe: data.rememberMe
+        };
+        
+        // Guardar credenciales por si necesitamos 2FA en el siguiente paso
         setUserCredentials({
           email: data.email,
           password: data.password,
-          rememberMe: data.rememberMe
+          rememberMe: data.rememberMe ?? true // Ensure rememberMe is always a boolean
         });
       }
       
@@ -100,21 +104,24 @@ export default function LoginPage() {
       if (login.fulfilled.match(resultAction)) {
         // Verificar si se requiere 2FA
         if (resultAction.payload.requires2FA) {
-          setMethod2FA(resultAction.payload.metodo_2fa || 'app');
+          // El backend requiere 2FA
+          const metodo = resultAction.payload.metodo_2fa || 'app';
+          setMethod2FA(metodo);
+          console.log('Se requiere 2FA con método:', metodo);
+          
           dispatch(addNotification({
-            message: 'Se requiere verificación de dos factores. Por favor, introduce el código.',
+            message: `Se requiere verificación de dos factores (${metodo}). Por favor, introduce el código.`,
             severity: 'info',
           }));
           
-          // Limpiar campo de código 2FA si hubiera un intento previo
-          setValue('code_2fa', '');
-          clearErrors('code_2fa');
+          // No redirigir aquí, ya que el usuario necesita introducir el código 2FA
         } else {
-          // Login exitoso, redirigir al dashboard
-          setUserCredentials(null);
+          // Login exitoso, redirigir al usuario
           router.push('/dashboard');
+          clearErrors();
+          
           dispatch(addNotification({
-            message: '¡Bienvenido al Sistema ERP!',
+            message: 'Inicio de sesión exitoso. Bienvenido/a!',
             severity: 'success',
           }));
         }
