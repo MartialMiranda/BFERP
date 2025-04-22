@@ -110,7 +110,8 @@ router.post(
       res.status(200).json({
         message: 'Login successful',
         user: result.user,
-        tokens: result.tokens
+        accessToken: result.tokens ? result.tokens.accessToken : undefined,
+        refreshToken: result.tokens ? result.tokens.refreshToken : undefined
       });
     } catch (error) {
       logger.error(`Login error: ${error.message}`);

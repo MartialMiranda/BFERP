@@ -34,17 +34,25 @@ export const authService = {
       metodo_2fa?: string;
       userId?: string;
       message: string;
+      tokens?: {
+        accessToken: string;
+        refreshToken: string;
+      };
     }
 
     const response = await apiClient.post<BackendLoginResponse>('/auth/login', credentials);
     
     // Mapear la respuesta del backend a nuestra interfaz LoginResponse
+    // Permitir tokens en la raíz o anidados en 'tokens'
+    const accessToken = response.data.accessToken || (response.data.tokens && response.data.tokens.accessToken);
+    const refreshToken = response.data.refreshToken || (response.data.tokens && response.data.tokens.refreshToken);
+
     return {
       message: response.data.message,
       user: response.data.user,
-      tokens: response.data.accessToken && response.data.refreshToken ? {
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken
+      tokens: accessToken && refreshToken ? {
+        accessToken,
+        refreshToken
       } : undefined,
       requires2FA: response.data.requires2FA,
       metodo_2fa: response.data.metodo_2fa,

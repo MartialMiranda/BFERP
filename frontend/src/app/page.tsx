@@ -1,9 +1,27 @@
+'use client';
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button, Typography, Card, CardContent, Container, Grid, Box, Paper } from "@mui/material";
 import { AccountCircle, Business, Assignment, Groups, Dashboard } from "@mui/icons-material";
 
+import { useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
+import { selectIsAuthenticated } from '../store/slices/authSlice';
+
 export default function Home() {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, router]);
+
+  if (isAuthenticated) return null;
+
   return (
     <Container maxWidth="lg" sx={{ py: 8 }}>
       {/* Hero Section */}
