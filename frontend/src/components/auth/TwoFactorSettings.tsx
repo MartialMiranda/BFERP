@@ -104,7 +104,7 @@ export default function TwoFactorSettings() {
           severity: 'success',
         }));
       }
-    } catch (error) {
+    } catch {
       dispatch(addNotification({
         message: 'Error al desactivar la autenticación de dos factores',
         severity: 'error',
@@ -141,9 +141,9 @@ export default function TwoFactorSettings() {
   }
 
   return (
-    <Card className="p-6 shadow-md">
-      <Box className="mb-6 flex items-center">
-        <Box className="mr-4">
+    <Card sx={{ p: { xs: 3, md: 5 }, boxShadow: 3, borderRadius: 3 }}>
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ mr: 3 }}>
           {user.tiene_2fa ? (
             <LockIcon color="success" fontSize="large" />
           ) : (
@@ -151,7 +151,7 @@ export default function TwoFactorSettings() {
           )}
         </Box>
         <Box>
-          <Typography variant="h5" component="h2" className="font-semibold">
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 600 }}>
             Autenticación de Dos Factores (2FA)
           </Typography>
           <Typography variant="body2" color="textSecondary">
@@ -163,17 +163,16 @@ export default function TwoFactorSettings() {
       </Box>
 
       {error && (
-        <Alert severity="error" className="mb-4">
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error.message}
         </Alert>
       )}
 
       {!user.tiene_2fa && !showVerification && (
-        <Box className="mb-6">
-          <Typography variant="body1" className="mb-3">
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             Elige un método de autenticación de dos factores:
           </Typography>
-          
           <FormControl component="fieldset">
             <RadioGroup
               name="2fa-method"
@@ -184,8 +183,8 @@ export default function TwoFactorSettings() {
                 value="app" 
                 control={<Radio />} 
                 label={
-                  <Box className="flex items-center">
-                    <AppIcon className="mr-2" />
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <AppIcon sx={{ mr: 1 }} />
                     <span>Aplicación de autenticación (Google Authenticator, Authy, etc.)</span>
                   </Box>
                 } 
@@ -194,16 +193,15 @@ export default function TwoFactorSettings() {
                 value="email" 
                 control={<Radio />} 
                 label={
-                  <Box className="flex items-center">
-                    <EmailIcon className="mr-2" />
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <EmailIcon sx={{ mr: 1 }} />
                     <span>Correo electrónico ({user.email})</span>
                   </Box>
                 } 
               />
             </RadioGroup>
           </FormControl>
-          
-          <Box className="mt-4">
+          <Box sx={{ mt: 3 }}>
             <Button
               variant="contained"
               color="primary"
@@ -233,10 +231,9 @@ export default function TwoFactorSettings() {
 
       {user.tiene_2fa && !showVerification && (
         <Box>
-          <Typography variant="body1" className="mb-4">
+          <Typography variant="body1" sx={{ mb: 3 }}>
             Método actual: <strong>{user.metodo_2fa === 'app' ? 'Aplicación de autenticación' : 'Correo electrónico'}</strong>
           </Typography>
-          
           <Button
             variant="outlined"
             color="warning"

@@ -33,11 +33,33 @@ const PasswordChangeForm: React.FC = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
-    } catch (err: any) {
-      if (err?.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err?.response?.data?.errors?.length) {
-        setError(err.response.data.errors[0].msg);
+    } catch (err: unknown) {
+      type ErrorResponse = {
+        response?: {
+          data?: {
+            message?: string;
+            errors?: { msg: string }[];
+          };
+        };
+      };
+
+      const errorObj = err as ErrorResponse;
+
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof errorObj.response === 'object' &&
+        errorObj.response !== null
+      ) {
+        const response = errorObj.response;
+        if (response?.data?.message) {
+          setError(response.data.message);
+        } else if (response?.data?.errors?.length) {
+          setError(response.data.errors[0].msg);
+        } else {
+          setError('Error al cambiar la contraseña.');
+        }
       } else {
         setError('Error al cambiar la contraseña.');
       }
