@@ -2,20 +2,21 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AxiosError } from 'axios';
 import { RootState } from '../index';
 import { authService } from '../../services/authService';
-import { User, AuthState, LoginCredentials, RegisterData, TwoFactorSetup, TwoFactorVerification, AuthError, TwoFactorSetupState } from '../../types/auth';
+import { User, AuthState, LoginCredentials, RegisterData, TwoFactorSetup, TwoFactorVerification, TwoFactorSetupState } from '../../types/auth';
 import { secureStorage } from '../../utils/storageUtils';
 import { ApiErrorResponse } from '../../types/common';
 
 // Inicializar estado desde almacenamiento
 // Type guard para validar User
-function isUser(obj: any): obj is User {
+function isUser(obj: unknown): obj is User {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const o = obj as Record<string, unknown>;
   return (
-    obj &&
-    typeof obj.id === 'string' &&
-    typeof obj.nombre === 'string' &&
-    typeof obj.email === 'string' &&
-    (obj.rol === 'admin' || obj.rol === 'gestor' || obj.rol === 'usuario') &&
-    typeof obj.tiene_2fa === 'boolean'
+    'id' in o && typeof o.id === 'string' &&
+    'nombre' in o && typeof o.nombre === 'string' &&
+    'email' in o && typeof o.email === 'string' &&
+    'rol' in o && (o.rol === 'admin' || o.rol === 'gestor' || o.rol === 'usuario') &&
+    'tiene_2fa' in o && typeof o.tiene_2fa === 'boolean'
   );
 }
 
@@ -189,7 +190,7 @@ export const refreshToken = createAsyncThunk(
  */
 export const logout = createAsyncThunk(
   'auth/logout',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState }) => {
     try {
       const { auth } = getState() as RootState;
       
@@ -202,7 +203,7 @@ export const logout = createAsyncThunk(
       console.log('Logged out, storage cleared');
       
       return null;
-    } catch (error) {
+    } catch {
       // Even if logout fails on the server, we still want to clear local state
       secureStorage.clearAuthStorage();
       console.log('Logout encountered an error, storage still cleared');
@@ -236,8 +237,8 @@ export const enable2FA = createAsyncThunk(
       return {
         ...response,
         method: method,
-        qrCode: response.otpauth_url || null,
-        secret: response.secret || null,
+        qrCode: response.qrCode || null,
+        secret: 'secret' in response && typeof (response as { secret?: string }).secret === 'string' ? (response as { secret?: string }).secret || null : null,
         pendingVerification: true
       };
     } catch (error) {
@@ -432,19 +433,41 @@ const authSlice = createSlice({
       .addCase(verify2FA.fulfilled, (state, action) => {
         state.loading = false;
         // Actualizar usuario después de verificación exitosa
-        if (action.payload && action.payload.user) {
-          state.user = action.payload.user;
-          
-          // Si la verificación es exitosa y el usuario existe, actualizar el estado de 2FA
-          if (state.user && state.user.tiene_2fa) {
-            // Limpiar estado de configuración de 2FA
-            state.twoFactorSetup = {
-              isActivating: false,
-              qrCode: null,
-              secret: null,
-              method: null,
-              pendingVerification: false
-            };
+        if (
+          action.payload &&
+          action.payload.user &&
+          typeof action.payload.user === 'object' &&
+          'id' in action.payload.user &&
+          'nombre' in action.payload.user &&
+          'email' in action.payload.user &&
+          'rol' in action.payload.user &&
+          'tiene_2fa' in action.payload.user
+        ) {
+          // Validar que el payload es un User válido antes de asignar
+          const user = action.payload.user as Partial<User>;
+          if (
+            user &&
+            typeof user.id === 'string' &&
+            typeof user.nombre === 'string' &&
+            typeof user.email === 'string' &&
+            typeof user.rol === 'string' &&
+            typeof user.tiene_2fa === 'boolean'
+          ) {
+            state.user = user as User;
+
+            // Si la verificación es exitosa y el usuario existe, actualizar el estado de 2FA
+            if (state.user && state.user.tiene_2fa) {
+              // Limpiar estado de configuración de 2FA
+              state.twoFactorSetup = {
+                isActivating: false,
+                qrCode: null,
+                secret: null,
+                method: null,
+                pendingVerification: false
+              };
+            }
+          } else {
+            state.user = null;
           }
         }
       })
@@ -462,12 +485,30 @@ const authSlice = createSlice({
           };
           
           // Si el servidor devuelve usuario actualizado, actualizarlo
-          if (action.payload.user) {
-            state.user = action.payload.user;
+          // (Solo actualizar si existe la propiedad user en el payload)
+          if ('user' in action.payload && action.payload.user && typeof action.payload.user === 'object') {
+            const userObj = action.payload.user as Record<string, unknown>;
+            if (
+              typeof userObj.id === 'string' &&
+              typeof userObj.nombre === 'string' &&
+              typeof userObj.email === 'string' &&
+              typeof userObj.rol === 'string' &&
+              typeof userObj.tiene_2fa === 'boolean'
+            ) {
+              state.user = userObj as User;
+            } else {
+              state.user = {
+                id: '',
+                nombre: '',
+                email: '',
+                rol: 'usuario',
+                tiene_2fa: false
+              };
+            }
           }
         }
       })
-      .addCase(disable2FA.fulfilled, (state, action) => {
+      .addCase(disable2FA.fulfilled, (state) => {
         // Actualizar el usuario localmente para reflejar que 2FA está deshabilitado
         if (state.user) {
           state.user.tiene_2fa = false;
@@ -491,8 +532,14 @@ const authSlice = createSlice({
         state.loading = false;
         if (action.payload && action.payload.requires2FA) {
           state.requires2FA = true;
-          // Solo guardar userId temporal
-          state.user = { id: action.payload.userId } as User;
+          // Solo guardar userId temporal, el resto de campos se ponen como valores vacíos válidos
+          state.user = {
+            id: action.payload.userId ?? '',
+            nombre: '',
+            email: '',
+            rol: 'usuario',
+            tiene_2fa: false
+          };
           state.token = null;
           state.refreshToken = null;
           state.isAuthenticated = false;
@@ -525,7 +572,7 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(register.fulfilled, (state, action) => {
+      .addCase(register.fulfilled, (state) => {
         state.loading = false;
         state.error = null;
       })

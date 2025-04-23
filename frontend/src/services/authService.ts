@@ -10,7 +10,6 @@ import {
   TwoFactorSetup,
   TwoFactorVerification,
 } from '../types/auth';
-import { secureStorage } from '../utils/storageUtils';
 
 /**
  * Service for authentication-related API endpoints
@@ -102,7 +101,11 @@ export const authService = {
    * @param token - Current access token
    */
   async logout(token: string): Promise<void> {
-    await apiClient.post('/auth/logout');
+    await apiClient.post('/auth/logout', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
   },
 
   /**
@@ -111,7 +114,7 @@ export const authService = {
    * @param token - Current access token
    * @returns Setup response with QR code or confirmation
    */
-  async enable2FA(setup: TwoFactorSetup, token: string): Promise<any> {
+  async enable2FA(setup: TwoFactorSetup, token: string): Promise<{ qrCode?: string; message: string }> {
     const response = await apiClient.post('/auth/enable-2fa', setup, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -125,8 +128,8 @@ export const authService = {
    * @param verification - Verification code and user ID
    * @returns Authentication response with tokens
    */
-  async verify2FA(verification: TwoFactorVerification): Promise<any> {
-    const response = await apiClient.post('/auth/verify-2fa', verification);
+  async verify2FA(verification: TwoFactorVerification): Promise<LoginResponse> {
+    const response = await apiClient.post<LoginResponse>('/auth/verify-2fa', verification);
     return response.data;
   },
 
@@ -159,7 +162,7 @@ export const authService = {
         },
       });
       return response.status === 200;
-    } catch (error) {
+    } catch {
       return false;
     }
   },

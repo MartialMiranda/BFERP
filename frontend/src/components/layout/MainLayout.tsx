@@ -34,6 +34,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import BusinessIcon from '@mui/icons-material/Business';
 import { logout, selectUser } from '../../store/slices/authSlice';
 import { AppDispatch } from '../../store';
+import { persistor } from '../../store';
 import Sidebar from './Sidebar';
 
 // Sidebar width in pixels
@@ -90,10 +91,12 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
     dispatch(logout())
       .unwrap()
       .then(() => {
+        persistor.purge(); // Limpia el storage de redux-persist
         router.push('/login');
       })
       .catch((error) => {
         console.error('Error during logout:', error);
+        persistor.purge(); // Asegura limpieza incluso si hay error
         router.push('/login');
       });
   };

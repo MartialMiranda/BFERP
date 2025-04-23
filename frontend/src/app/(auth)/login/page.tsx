@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Card, TextField, Typography, CircularProgress, InputAdornment, IconButton, Alert, Paper, Divider, useTheme, FormControlLabel, Checkbox } from '@mui/material';
+import { Box, Button, TextField, Typography, CircularProgress, InputAdornment, IconButton, Alert, Paper, Divider, useTheme, FormControlLabel, Checkbox } from '@mui/material';
 import { Visibility, VisibilityOff, VerifiedUser, ArrowBack, LockOutlined } from '@mui/icons-material';
 import { login, selectRequires2FA, clearAuth } from '../../../store/slices/authSlice';
 import { addNotification } from '../../../store/slices/uiSlice';
@@ -43,7 +43,6 @@ export default function LoginPage() {
     formState: { errors },
     setValue,
     clearErrors,
-    getValues,
   } = useForm<LoginFormInputs>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -135,7 +134,8 @@ export default function LoginPage() {
           severity: 'error',
         }));
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error('Login error:', error);
       dispatch(addNotification({
         message: 'Error al conectar con el servidor',
         severity: 'error',
