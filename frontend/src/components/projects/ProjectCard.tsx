@@ -19,29 +19,13 @@ interface Props {
 }
 
 export default function ProjectCard({
-  project, onView, onMenuOpen,
+  project, onView, onMenuOpen, getStatusClass,
   menuAnchorEl, handleMenuClose, handleEditProject, handleDeleteClick, isMenuOpen
 }: Props) {
   // Format dates for display
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No establecida';
     return format(new Date(dateString), 'dd MMM yyyy', { locale: es });
-  };
-
-  // Colores vistosos para cada estado
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'planificado':
-        return { background: '#e3f2fd', color: '#1976d2', borderColor: '#90caf9' };
-      case 'en progreso':
-        return { background: '#fff3e0', color: '#ef6c00', borderColor: '#ffb74d' };
-      case 'completado':
-        return { background: '#e8f5e9', color: '#388e3c', borderColor: '#81c784' };
-      case 'cancelado':
-        return { background: '#ffebee', color: '#d32f2f', borderColor: '#e57373' };
-      default:
-        return { background: '#ececec', color: '#616161', borderColor: '#bdbdbd' };
-    }
   };
 
   return (
@@ -115,13 +99,8 @@ export default function ProjectCard({
         <Box display="flex" alignItems="center" justifyContent="space-between" mt={2}>
           <Chip 
             label={project.estado} 
-            size="small"
-            sx={{
-              fontWeight: 600,
-              px: 1.5,
-              border: '2px solid',
-              ...getEstadoColor(project.estado)
-            }}
+            className={getStatusClass(project.estado)} 
+            size="small" 
           />
           <Typography variant="caption" color="textSecondary">
             Creado: {formatDate(project.creado_en)}

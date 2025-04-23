@@ -9,7 +9,6 @@ import {
   Button, 
   CircularProgress, 
   Alert,
-  Card,
   Paper
 } from '@mui/material';
 import { 
@@ -19,7 +18,6 @@ import {
 import QRCode from 'react-qr-code';
 import { verify2FA, selectAuthLoading, selectAuthError, selectUser } from '../../store/slices/authSlice';
 import { AppDispatch } from '../../store';
-import { TwoFactorResponse } from '../../types/auth';
 
 interface TwoFactorVerificationProps {
   method: 'app' | 'email' | null;
