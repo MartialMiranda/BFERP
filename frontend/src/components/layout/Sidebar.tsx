@@ -13,7 +13,6 @@ import {
   Toolbar, 
   Typography, 
   useTheme,
-  Collapse,
   Avatar,
   Tooltip,
   IconButton
@@ -35,13 +34,15 @@ import { selectUser } from '../../store/slices/authSlice';
 
 interface SidebarProps {
   onClose: () => void;
+  mini?: boolean;
+  onMiniToggle?: () => void;
 }
 
 /**
  * Sidebar component for main navigation
  * Shows different navigation options based on user role
  */
-const Sidebar = ({ onClose }: SidebarProps) => {
+const Sidebar = ({ onClose, mini = false, onMiniToggle }: SidebarProps) => {
   const user = useSelector(selectUser);
   const router = useRouter();
   const pathname = usePathname();
@@ -145,135 +146,128 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     <Box 
       className="h-full flex flex-col"
       sx={{
-        color: theme === 'dark' ? 'text.primary' : 'inherit'
+        color: theme === 'dark' ? 'text.primary' : 'inherit',
+        width: mini ? 64 : 260,
+        transition: muiTheme.transitions.create('width', {
+          easing: muiTheme.transitions.easing.sharp,
+          duration: muiTheme.transitions.duration.leavingScreen,
+        }),
+        overflowX: 'hidden',
       }}
     >
-      {/* Logo and brand with close button */}
+      {/* Logo and brand with mini toggle button */}
       <Toolbar
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: mini ? 'center' : 'space-between',
           padding: '8px 16px',
           minHeight: { xs: 64, sm: 70 },
           backgroundColor: alpha(muiTheme.palette.primary.main, 0.04),
         }}
       >
-        <Box className="flex items-center">
+        <Box className="flex items-center" sx={{ justifyContent: mini ? 'center' : 'flex-start', width: '100%' }}>
           <BusinessIcon 
             color="primary" 
-            sx={{ 
-              fontSize: 28,
-              mr: 1,
-            }} 
+            sx={{ fontSize: 28, mr: mini ? 0 : 1 }} 
           />
-          <Typography 
-            variant="h6" 
-            component="h1" 
-            className="font-bold"
-            sx={{ color: muiTheme.palette.primary.main }}
-          >
-            Sistema ERP
-          </Typography>
+          {!mini && (
+            <Typography 
+              variant="h6" 
+              component="h1" 
+              className="font-bold"
+              sx={{ color: muiTheme.palette.primary.main }}
+            >
+              Sistema ERP
+            </Typography>
+          )}
         </Box>
-        
-        {/* Close sidebar button */}
-        <IconButton
-          onClick={onClose}
-          sx={{ 
-            color: muiTheme.palette.primary.main,
-            '&:hover': {
-              backgroundColor: alpha(muiTheme.palette.primary.main, 0.08),
-            }
-          }}
-        >
-          <ChevronLeftIcon />
-        </IconButton>
+        {onMiniToggle && (
+          <IconButton
+            onClick={onMiniToggle}
+            sx={{ ml: 1, color: muiTheme.palette.primary.main }}
+          >
+            <ChevronLeftIcon style={{ transform: mini ? 'rotate(180deg)' : 'none' }} />
+          </IconButton>
+        )}
       </Toolbar>
       <Divider />
-      
       {/* User info */}
-      <Box 
-        className="p-4 flex items-start space-x-3" 
-        sx={{ 
-          backgroundColor: theme === 'dark' ? alpha(muiTheme.palette.primary.dark, 0.1) : alpha(muiTheme.palette.primary.light, 0.1),
-          borderBottom: '1px solid',
-          borderColor: 'divider'
-        }}
-      >
-        <Avatar
+      {!mini && (
+        <Box 
+          className="p-4 flex items-start space-x-3" 
           sx={{ 
-            bgcolor: muiTheme.palette.primary.main,
-            width: 42,
-            height: 42,
+            backgroundColor: theme === 'dark' ? alpha(muiTheme.palette.primary.dark, 0.1) : alpha(muiTheme.palette.primary.light, 0.1),
+            borderBottom: '1px solid',
+            borderColor: 'divider'
           }}
         >
-          {getUserInitials()}
-        </Avatar>
-        <Box className="overflow-hidden">
-          <Typography 
-            variant="subtitle1" 
-            className="font-medium" 
-            noWrap
+          <Avatar
             sx={{ 
-              maxWidth: '100%', 
-              display: 'block' 
+              bgcolor: muiTheme.palette.primary.main,
+              width: 42,
+              height: 42,
             }}
           >
-            {user?.nombre}
-          </Typography>
-          <Typography 
-            variant="body2" 
-            className="text-gray-500 dark:text-gray-400" 
-            noWrap
-            sx={{ 
-              maxWidth: '100%', 
-              display: 'block' 
-            }}
-          >
-            {user?.email}
-          </Typography>
-          <Box className="flex mt-1 space-x-1">
+            {getUserInitials()}
+          </Avatar>
+          <Box className="overflow-hidden">
             <Typography 
-              variant="caption" 
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                px: 1,
-                py: 0.25,
-                borderRadius: 1,
-                backgroundColor: alpha(muiTheme.palette.primary.main, 0.1),
-                color: muiTheme.palette.primary.main,
-                fontWeight: 500,
-              }}
+              variant="subtitle1" 
+              className="font-medium" 
+              noWrap
+              sx={{ maxWidth: '100%', display: 'block' }}
             >
-              {getUserRoleText()}
+              {user?.nombre}
             </Typography>
-            
-            {user?.tiene_2fa && (
-              <Tooltip title="Autenticación de dos factores activa">
-                <Typography 
-                  variant="caption" 
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    px: 1,
-                    py: 0.25,
-                    borderRadius: 1,
-                    backgroundColor: alpha(muiTheme.palette.success.main, 0.1),
-                    color: muiTheme.palette.success.main,
-                    fontWeight: 500,
-                  }}
-                >
-                  <VerifiedUserIcon sx={{ fontSize: 12, mr: 0.5 }} />
-                  2FA
-                </Typography>
-              </Tooltip>
-            )}
+            <Typography 
+              variant="body2" 
+              className="text-gray-500 dark:text-gray-400" 
+              noWrap
+              sx={{ maxWidth: '100%', display: 'block' }}
+            >
+              {user?.email}
+            </Typography>
+            <Box className="flex mt-1 space-x-1">
+              <Typography 
+                variant="caption" 
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  px: 1,
+                  py: 0.25,
+                  borderRadius: 1,
+                  backgroundColor: alpha(muiTheme.palette.primary.main, 0.1),
+                  color: muiTheme.palette.primary.main,
+                  fontWeight: 500,
+                }}
+              >
+                {getUserRoleText()}
+              </Typography>
+              {user?.tiene_2fa && (
+                <Tooltip title="Autenticación de dos factores activa">
+                  <Typography 
+                    variant="caption" 
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 1,
+                      backgroundColor: alpha(muiTheme.palette.success.main, 0.1),
+                      color: muiTheme.palette.success.main,
+                      fontWeight: 500,
+                    }}
+                  >
+                    <VerifiedUserIcon sx={{ fontSize: 12, mr: 0.5 }} />
+                    2FA
+                  </Typography>
+                </Tooltip>
+              )}
+            </Box>
           </Box>
         </Box>
-      </Box>
-      
+      )}
       {/* Navigation items */}
       <List 
         component="nav" 
@@ -283,13 +277,15 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             borderRadius: 1.5,
             mx: 1,
             my: 0.5,
+            justifyContent: mini ? 'center' : 'flex-start',
+            px: mini ? 1 : 2,
           },
         }}
       >
         {filteredItems.map((item) => {
           const isActive = pathname === item.path;
           return (
-            <ListItem key={item.text} disablePadding>
+            <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
               <ListItemButton
                 selected={isActive}
                 onClick={() => handleNavigation(item.path)}
@@ -314,47 +310,52 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     borderRadius: '0 4px 4px 0',
                     backgroundColor: muiTheme.palette.primary.main,
                   } : {},
-                  pl: isActive ? 3 : 2,
+                  pl: mini ? 0 : (isActive ? 3 : 2),
+                  justifyContent: mini ? 'center' : 'flex-start',
                 }}
               >
                 <ListItemIcon 
                   sx={{ 
                     color: isActive ? muiTheme.palette.primary.main : 'inherit',
                     minWidth: 40,
+                    justifyContent: 'center',
                   }}
                 >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  primaryTypographyProps={{
-                    fontWeight: isActive ? 600 : 400,
-                    variant: 'body2',
-                  }}
-                />
+                {!mini && (
+                  <ListItemText 
+                    primary={item.text} 
+                    primaryTypographyProps={{
+                      fontWeight: isActive ? 600 : 400,
+                      variant: 'body2',
+                    }}
+                  />
+                )}
               </ListItemButton>
             </ListItem>
           );
         })}
       </List>
-      
       {/* Footer */}
-      <Box 
-        className="p-3 text-center" 
-        sx={{ 
-          borderTop: '1px solid',
-          borderColor: 'divider',
-          backgroundColor: alpha(muiTheme.palette.primary.main, 0.04),
-        }}
-      >
-        <Typography 
-          variant="caption" 
-          className="text-gray-500 dark:text-gray-400"
-          sx={{ opacity: 0.8 }}
+      {!mini && (
+        <Box 
+          className="p-3 text-center" 
+          sx={{ 
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            backgroundColor: alpha(muiTheme.palette.primary.main, 0.04),
+          }}
         >
-          2025 ERP System v1.0.0
-        </Typography>
-      </Box>
+          <Typography 
+            variant="caption" 
+            className="text-gray-500 dark:text-gray-400"
+            sx={{ opacity: 0.8 }}
+          >
+            2025 ERP System v1.0.0
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };

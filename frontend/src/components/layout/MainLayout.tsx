@@ -7,13 +7,11 @@ import { useTheme } from 'next-themes';
 import { 
   AppBar, 
   Box, 
-  CssBaseline, 
   Drawer, 
   IconButton, 
   Toolbar, 
   Typography, 
   useMediaQuery, 
-  Theme, 
   Avatar, 
   Menu, 
   MenuItem, 
@@ -23,23 +21,15 @@ import {
   useTheme as useMuiTheme, 
   alpha,
   Tooltip,
-  Badge,
-  Fade
-} from '@mui/material';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+  Badge} from '@mui/material';
 import { 
   Menu as MenuIcon, 
-  ChevronLeft as ChevronLeftIcon, 
   Brightness4 as DarkModeIcon, 
   Brightness7 as LightModeIcon, 
-  AccountCircle, 
   Logout as LogoutIcon, 
   Person as PersonIcon, 
-  BarChart,
   Notifications as NotificationsIcon
 } from '@mui/icons-material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import SettingsIcon from '@mui/icons-material/Settings';
 import SecurityIcon from '@mui/icons-material/Security';
 import BusinessIcon from '@mui/icons-material/Business';
 import { logout, selectUser } from '../../store/slices/authSlice';
@@ -48,6 +38,7 @@ import Sidebar from './Sidebar';
 
 // Sidebar width in pixels
 const drawerWidth = 260;
+const miniDrawerWidth = 64;
 
 /**
  * Main Layout component that wraps the application pages
@@ -64,6 +55,9 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
   // State for controlling the drawer open/close
   const [open, setOpen] = useState(!isSmallScreen);
   
+  // State for mini sidebar
+  const [mini, setMini] = useState(false);
+
   // State for user menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -72,6 +66,9 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
   const handleDrawerToggle = () => {
     setOpen((prevOpen) => !prevOpen);
   };
+
+  // Handle mini sidebar toggle
+  const handleMiniToggle = () => setMini((prev) => !prev);
   
   // Close drawer on small screens when window resizes
   useEffect(() => {
@@ -130,25 +127,30 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <Box className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <Box className="flex h-screen bg-gray-50 dark:bg-gray-900" sx={{ width: '100%', minHeight: '100vh', background: 'none', margin: 0, p: 0, boxSizing: 'border-box', overflow: 'hidden' }}>
       {/* Sidebar drawer (persistent on large screens, temporary on small screens) */}
       <Drawer
         variant={isSmallScreen ? 'temporary' : 'persistent'}
         open={open}
         onClose={handleDrawerToggle}
         sx={{
-          width: drawerWidth,
+          width: mini ? miniDrawerWidth : drawerWidth,
           flexShrink: 0,
           zIndex: muiTheme.zIndex.appBar - 1, // Make sure drawer is below app bar
           '& .MuiDrawer-paper': {
-            width: drawerWidth,
+            width: mini ? miniDrawerWidth : drawerWidth,
             boxSizing: 'border-box',
             borderRight: '1px solid',
             borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+            overflowX: 'hidden',
+            transition: muiTheme.transitions.create('width', {
+              easing: muiTheme.transitions.easing.sharp,
+              duration: muiTheme.transitions.duration.leavingScreen,
+            }),
           },
         }}
       >
-        <Sidebar onClose={handleDrawerToggle} />
+        <Sidebar onClose={handleDrawerToggle} mini={mini} onMiniToggle={handleMiniToggle} />
       </Drawer>
       
       {/* Main content */}
@@ -156,12 +158,12 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
         component="main" 
         className="flex flex-col flex-grow"
         sx={{
-          width: { sm: `calc(100% - ${open ? drawerWidth : 0}px)` },
-          ml: { sm: open ? `${drawerWidth}px` : 0 },
-          transition: muiTheme.transitions.create(['margin', 'width'], {
-            easing: muiTheme.transitions.easing.sharp,
-            duration: muiTheme.transitions.duration.leavingScreen,
-          }),
+          width: '100%',
+          ml: 0,
+          minHeight: '100vh',
+          p: 0,
+          background: 'none',
+          boxSizing: 'border-box',
         }}
       >
         {/* App bar */}
@@ -169,18 +171,16 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
           position="sticky" 
           elevation={0}
           sx={{
-            width: { sm: `calc(100% - ${open ? drawerWidth : 0}px)` },
-            ml: { sm: open ? `${drawerWidth}px` : 0 },
-            transition: muiTheme.transitions.create(['margin', 'width'], {
-              easing: muiTheme.transitions.easing.sharp,
-              duration: muiTheme.transitions.duration.leavingScreen,
-            }),
+            width: '100%', // Fuerza el header a ocupar todo el ancho visible
+            ml: 0,
+            left: 0,
             backgroundColor: theme === 'dark' 
               ? alpha(muiTheme.palette.primary.dark, 0.9) 
               : alpha(muiTheme.palette.primary.light, 0.9),
             backdropFilter: 'blur(8px)',
             borderBottom: '1px solid',
             borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+            boxSizing: 'border-box',
           }}
         >
           <Toolbar sx={{ justifyContent: 'space-between' }}>
@@ -215,7 +215,7 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
                   color="inherit" 
                   onClick={toggleTheme}
                   sx={{
-                    backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.1),
+                    backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.0),
                     borderRadius: 1,
                     '&:hover': {
                       backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.2),
@@ -232,7 +232,7 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
                 <IconButton 
                   color="inherit"
                   sx={{
-                    backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.1),
+                    backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.0),
                     borderRadius: 1,
                     '&:hover': {
                       backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.2),
@@ -254,7 +254,7 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
                   aria-haspopup="true"
                   aria-expanded={menuOpen ? 'true' : undefined}
                   sx={{
-                    backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.1),
+                    backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.0),
                     borderRadius: 1,
                     '&:hover': {
                       backgroundColor: alpha(muiTheme.palette.primary.contrastText, 0.2),
@@ -342,22 +342,20 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
         
         {/* Page content */}
         <Box 
-          className="flex-grow p-4 overflow-auto"
+          className="flex-grow overflow-auto"
           sx={{
             backgroundColor: theme === 'dark' ? 'background.default' : 'background.default',
+            width: '100%',
+            minHeight: '100vh',
+            borderRadius: 0,
+            boxShadow: 'none',
+            p: 0,
+            m: 0,
+            boxSizing: 'border-box',
+            overflowX: 'auto',
           }}
         >
-          <Box 
-            className="h-full rounded-lg"
-            sx={{
-              backgroundColor: theme === 'dark' ? alpha(muiTheme.palette.background.paper, 0.8) : muiTheme.palette.background.paper,
-              boxShadow: theme === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.05)',
-              borderRadius: 2,
-              overflow: 'hidden',
-            }}
-          >
-            {children}
-          </Box>
+          {children}
         </Box>
       </Box>
     </Box>

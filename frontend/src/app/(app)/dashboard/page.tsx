@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Box, Grid, Card, CardContent, Typography, CircularProgress, Button, Divider, Avatar } from '@mui/material';
+import { useDispatch } from 'react-redux';
+import { Box, Grid, Card, CardContent, Typography, CircularProgress, Button, Divider } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import FolderIcon from '@mui/icons-material/Folder';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -11,7 +11,6 @@ import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { addNotification } from '../../../store/slices/uiSlice';
 import { AppDispatch } from '../../../store';
-import { selectUser } from '../../../store/slices/authSlice';
 import { Project } from '../../../types/project';
 import { Task } from '../../../types/task';
 import { projectService } from '../../../services/projectService';
@@ -24,7 +23,6 @@ import SecurityCard from '../../../components/auth/SecurityCard';
  */
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
-  const user = useSelector(selectUser);
   
   const [loading, setLoading] = useState(true);
   const [totalProjects, setTotalProjects] = useState(0);
@@ -136,69 +134,72 @@ export default function Dashboard() {
   }
 
   return (
-    <Box className="p-4">
-      <Typography variant="h4" component="h1" className="mb-6">
+    <Box sx={{ p: { xs: 1, md: 3 }, width: '100%', minHeight: '100vh', background: 'none', margin: 0 }}>
+      <Typography variant="h4" component="h1" sx={{ mb: 4, fontWeight: 600 }}>
         Dashboard
       </Typography>
-      
       {/* Tarjetas de resumen */}
-      <Grid container spacing={3} className="mb-6">
-        <Grid item xs={12} sm={6} md={3}>
-          <Card className="h-full">
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <Box className="bg-primary-100 dark:bg-primary-900/20 p-3 rounded-full mb-3">
-                <FolderIcon className="text-primary-600 dark:text-primary-400" fontSize="large" />
-              </Box>
-              <Typography variant="h5" className="font-bold">{totalProjects}</Typography>
-              <Typography variant="body1" color="textSecondary">Proyectos totales</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card className="h-full">
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <Box className="bg-success-100 dark:bg-success-900/20 p-3 rounded-full mb-3">
-                <AssignmentIcon className="text-success-600 dark:text-success-400" fontSize="large" />
-              </Box>
-              <Typography variant="h5" className="font-bold">{activeProjects}</Typography>
-              <Typography variant="body1" color="textSecondary">Proyectos activos</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card className="h-full">
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <Box className="bg-warning-100 dark:bg-warning-900/20 p-3 rounded-full mb-3">
-                <AssignmentIcon className="text-warning-600 dark:text-warning-400" fontSize="large" />
-              </Box>
-              <Typography variant="h5" className="font-bold">{totalTasks}</Typography>
-              <Typography variant="body1" color="textSecondary">Tareas asignadas</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card className="h-full">
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <Box className="bg-secondary-100 dark:bg-secondary-900/20 p-3 rounded-full mb-3">
-                <GroupsIcon className="text-secondary-600 dark:text-secondary-400" fontSize="large" />
-              </Box>
-              <Typography variant="h5" className="font-bold">
-                {completedTasks} / {totalTasks}
-              </Typography>
-              <Typography variant="body1" color="textSecondary">Tareas completadas</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      <Grid container spacing={0} sx={{ mb: 4, gap: 3, justifyContent: 'center', width: '100%' }}>
+        {[0,1,2,3].map((i) => (
+          <Grid key={i} item xs={12} sm={6} md={2} sx={{ display: 'flex' }}>
+            <Card sx={{
+              width: '100%',
+              minHeight: 200,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: 3,
+              m: 0,
+              boxShadow: 3,
+              borderRadius: 3,
+              backgroundColor: 'background.paper',
+              gap: 1.5
+            }}>
+              {i === 0 && (
+                <>
+                  <Box className="bg-primary-100 dark:bg-primary-900/20 p-3 rounded-full mb-3">
+                    <FolderIcon className="text-primary-600 dark:text-primary-400" fontSize="large" />
+                  </Box>
+                  <Typography variant="h5" className="font-bold">{totalProjects}</Typography>
+                  <Typography variant="body1" color="textSecondary">Proyectos totales</Typography>
+                </>
+              )}
+              {i === 1 && (
+                <>
+                  <Box className="bg-success-100 dark:bg-success-900/20 p-3 rounded-full mb-3">
+                    <AssignmentIcon className="text-success-600 dark:text-success-400" fontSize="large" />
+                  </Box>
+                  <Typography variant="h5" className="font-bold">{activeProjects}</Typography>
+                  <Typography variant="body1" color="textSecondary">Proyectos activos</Typography>
+                </>
+              )}
+              {i === 2 && (
+                <>
+                  <Box className="bg-warning-100 dark:bg-warning-900/20 p-3 rounded-full mb-3">
+                    <AssignmentIcon className="text-warning-600 dark:text-warning-400" fontSize="large" />
+                  </Box>
+                  <Typography variant="h5" className="font-bold">{totalTasks}</Typography>
+                  <Typography variant="body1" color="textSecondary">Tareas asignadas</Typography>
+                </>
+              )}
+              {i === 3 && (
+                <>
+                  <Box className="bg-secondary-100 dark:bg-secondary-900/20 p-3 rounded-full mb-3">
+                    <GroupsIcon className="text-secondary-600 dark:text-secondary-400" fontSize="large" />
+                  </Box>
+                  <Typography variant="h5" className="font-bold">{completedTasks} / {totalTasks}</Typography>
+                  <Typography variant="body1" color="textSecondary">Tareas completadas</Typography>
+                </>
+              )}
+            </Card>
+          </Grid>
+        ))}
       </Grid>
-      
       {/* Contenido principal */}
-      <Grid container spacing={4}>
-        {/* Proyectos recientes */}
+      <Grid container spacing={3} sx={{ mb: 2, width: '100%' }}>
         <Grid item xs={12} md={6}>
-          <Card>
+          <Card sx={{ p: 2, borderRadius: 3, boxShadow: 2, mb: 3 }}>
             <CardContent>
               <Box className="flex justify-between items-center mb-4">
                 <Typography variant="h6" className="font-semibold">
@@ -208,7 +209,6 @@ export default function Dashboard() {
                   Ver todos
                 </Button>
               </Box>
-              
               {recentProjects.length === 0 ? (
                 <Box className="py-4 text-center">
                   <Typography variant="body2" color="textSecondary">
@@ -252,10 +252,8 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </Grid>
-        
-        {/* Mis tareas */}
         <Grid item xs={12} md={6}>
-          <Card>
+          <Card sx={{ p: 2, borderRadius: 3, boxShadow: 2, mb: 3 }}>
             <CardContent>
               <Box className="flex justify-between items-center mb-4">
                 <Typography variant="h6" className="font-semibold">
@@ -265,7 +263,6 @@ export default function Dashboard() {
                   Ver todas
                 </Button>
               </Box>
-              
               {myTasks.length === 0 ? (
                 <Box className="py-4 text-center">
                   <Typography variant="body2" color="textSecondary">
@@ -321,10 +318,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </Grid>
-        
-        {/* Seguridad de la cuenta - NUEVA SECCIÓN */}
         <Grid item xs={12} md={6}>
-          <SecurityCard />
+          <Card sx={{ p: 2, borderRadius: 3, boxShadow: 2, mb: 3 }}>
+            <CardContent>
+              <SecurityCard />
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
     </Box>
