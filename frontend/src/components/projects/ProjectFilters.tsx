@@ -1,34 +1,36 @@
 import { Box, TextField, Button, Collapse, MenuItem } from '@mui/material';
+import { useState, useEffect } from 'react';
 import { ProjectFilters as FiltersType } from '../../types/project';
 
 interface Props {
-  searchTerm: string;
-  setSearchTerm: (v: string) => void;
-  showFilters: boolean;
-  setShowFilters: (v: boolean) => void;
   filters: FiltersType;
   setFilters: (f: FiltersType) => void;
+  showFilters: boolean;
+  setShowFilters: (v: boolean) => void;
   clearFilters: () => void;
-  loadProjects: () => void;
-  handleSearch: (e: React.FormEvent) => void;
 }
 
 export default function ProjectFilters({
-  searchTerm, setSearchTerm, showFilters, setShowFilters,
-  filters, setFilters, clearFilters, loadProjects, handleSearch
+  filters, setFilters, showFilters, setShowFilters, clearFilters
 }: Props) {
   const handleFilterChange = (field: keyof FiltersType, value: string) => {
-    setFilters({ ...filters, [field]: value });
-    loadProjects();
+    setFilters({ ...filters, [field]: value, pagina: 1 });
+  };
+
+  const [localSearch, setLocalSearch] = useState(filters.nombre || '');
+  useEffect(() => { setLocalSearch(filters.nombre || ''); }, [filters.nombre]);
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFilters({ ...filters, nombre: localSearch, pagina: 1 });
   };
 
   return (
     <Box mb={3}>
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8 }}>
+      <form onSubmit={onSubmit} style={{ display: 'flex', gap: 8 }}>
         <TextField
           label="Buscar proyecto"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          value={localSearch}
+          onChange={e => setLocalSearch(e.target.value)}
           size="small"
         />
         <Button type="submit" variant="contained">Buscar</Button>
@@ -38,7 +40,7 @@ export default function ProjectFilters({
         <Button onClick={clearFilters} variant="text">Limpiar</Button>
       </form>
       <Collapse in={showFilters}>
-        <Box mt={2} display="flex" gap={2}>
+        <Box mt={2} display="flex" gap={2} flexWrap="wrap">
           <TextField
             label="Estado"
             select

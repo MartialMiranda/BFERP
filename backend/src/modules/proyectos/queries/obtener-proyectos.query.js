@@ -137,7 +137,7 @@ async function execute(usuarioId, filtros = {}) {
     logger.info(`Proyectos encontrados: ${proyectos.length}, Total: ${totalCount.count}`);
     
     // Para cada proyecto, obtener información adicional
-    const proyectosConDetalles = await Promise.all(proyectos.map(async (proyecto) => {
+    let proyectosConDetalles = await Promise.all(proyectos.map(async (proyecto) => {
       // Obtener los equipos del proyecto
       const equipos = await db.manyOrNone(`
         SELECT DISTINCT e.*, COUNT(eu.id) as total_miembros
@@ -162,7 +162,15 @@ async function execute(usuarioId, filtros = {}) {
         progreso
       };
     }));
-    
+
+    // Filtro por progreso (min y max)
+    if (filtros.progreso_min !== undefined) {
+      proyectosConDetalles = proyectosConDetalles.filter(p => p.progreso >= parseInt(filtros.progreso_min));
+    }
+    if (filtros.progreso_max !== undefined) {
+      proyectosConDetalles = proyectosConDetalles.filter(p => p.progreso <= parseInt(filtros.progreso_max));
+    }
+
     return {
       proyectos: proyectosConDetalles,
       paginacion: {

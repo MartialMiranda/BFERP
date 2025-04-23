@@ -69,6 +69,14 @@ export default function ProyectosPage() {
   useEffect(() => {
     loadProjects();
   }, [filters]);
+
+  // Sincroniza el campo de búsqueda con el filtro nombre
+  useEffect(() => {
+    if (filters.nombre !== searchTerm) {
+      setSearchTerm(filters.nombre || '');
+    }
+    // eslint-disable-next-line
+  }, [filters.nombre]);
   
   /**
    * Cargar proyectos desde el API con filtros aplicados

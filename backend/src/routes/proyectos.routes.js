@@ -81,7 +81,11 @@ router.get(
       };
       
       // Obtener proyectos mediante la consulta
-      const resultado = await obtenerProyectosQuery.execute(req.user.id, filtros);
+      const resultado = await obtenerProyectosQuery.execute(req.user.id, {
+        ...filtros,
+        progreso_min: req.query.progreso_min,
+        progreso_max: req.query.progreso_max
+      });
       
       res.json(resultado);
     } catch (error) {
