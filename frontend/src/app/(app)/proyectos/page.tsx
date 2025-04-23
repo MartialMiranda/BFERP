@@ -51,8 +51,7 @@ export default function ProyectosPage() {
   const [showFilters, setShowFilters] = useState(false);
   
   // Estados para menú contextual
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [menuState, setMenuState] = useState<{ anchorEl: HTMLElement | null, projectId: string | null }>({ anchorEl: null, projectId: null });
   
   // Estados para diálogos
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -154,26 +153,9 @@ export default function ProyectosPage() {
   };
   
   /**
-   * Manejar cambios en los filtros
-   */
-  const handleFilterChange = (filter: keyof ProjectFiltersType, value: string) => {
-    console.log(`Cambiando filtro ${filter} a:`, value);
-    
-    setFilters(prev => ({
-      ...prev,
-      [filter]: value,
-      pagina: 1, // Resetear a la primera página cuando cambia un filtro
-    }));
-    
-    // loadProjects se llamará automáticamente debido al useEffect
-  };
-  
-  /**
    * Resetear todos los filtros
    */
-  const clearFilters = () => {
-    console.log('Limpiando todos los filtros');
-    
+  const clearFilters = () => {    
     // Resetear el término de búsqueda
     setSearchTerm('');
     
@@ -205,15 +187,14 @@ export default function ProyectosPage() {
    * Abrir menú contextual para un proyecto
    */
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, projectId: string) => {
-    setMenuAnchorEl(event.currentTarget);
-    setSelectedProjectId(projectId);
+    setMenuState({ anchorEl: event.currentTarget, projectId });
   };
   
   /**
    * Cerrar menú contextual
    */
   const handleMenuClose = () => {
-    setMenuAnchorEl(null);
+    setMenuState({ anchorEl: null, projectId: null });
   };
   
   /**
@@ -228,10 +209,10 @@ export default function ProyectosPage() {
    * Abrir diálogo para editar un proyecto
    */
   const handleEditProject = async () => {
-    if (!selectedProjectId) return;
+    if (!menuState.projectId) return;
     
     try {
-      const project = await projectService.getProject(selectedProjectId);
+      const project = await projectService.getProject(menuState.projectId);
       
       setFormData({
         nombre: project.nombre,
@@ -265,10 +246,10 @@ export default function ProyectosPage() {
    * Eliminar un proyecto
    */
   const confirmDelete = async () => {
-    if (!selectedProjectId) return;
+    if (!menuState.projectId) return;
     
     try {
-      await projectService.deleteProject(selectedProjectId);
+      await projectService.deleteProject(menuState.projectId);
       
       dispatch(addNotification({
         message: 'Proyecto eliminado correctamente',
@@ -328,9 +309,9 @@ export default function ProyectosPage() {
         estado: formData.estado as 'planificado' | 'en progreso' | 'completado' | 'cancelado',
       };
       
-      if (isEditMode && selectedProjectId) {
+      if (isEditMode && menuState.projectId) {
         // Editar proyecto existente
-        await projectService.updateProject(selectedProjectId, projectData);
+        await projectService.updateProject(menuState.projectId, projectData);
         dispatch(addNotification({
           message: 'Proyecto actualizado correctamente',
           severity: 'success',
@@ -409,11 +390,11 @@ export default function ProyectosPage() {
         handleViewProject={handleViewProject}
         handleMenuOpen={handleMenuOpen}
         getStatusClass={getStatusClass}
-        menuAnchorEl={menuAnchorEl}
+        menuAnchorEl={menuState.anchorEl}
         handleMenuClose={handleMenuClose}
         handleEditProject={handleEditProject}
         handleDeleteClick={handleDeleteClick}
-        selectedProjectId={selectedProjectId}
+        selectedProjectId={menuState.projectId}
       />
       <Pagination
         loading={loading}

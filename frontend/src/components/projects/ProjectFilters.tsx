@@ -1,5 +1,4 @@
 import { Box, TextField, Button, Collapse, MenuItem } from '@mui/material';
-import { useState, useEffect } from 'react';
 import { ProjectFilters as FiltersType } from '../../types/project';
 
 interface Props {

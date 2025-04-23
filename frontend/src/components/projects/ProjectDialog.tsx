@@ -28,12 +28,7 @@ export default function ProjectDialog({
       onClose={onClose} 
       maxWidth="sm" 
       fullWidth
-      sx={{ 
-        zIndex: 10000, // Higher z-index to prevent overlap
-        '& .MuiBackdrop-root': {
-          backgroundColor: 'rgba(0, 0, 0, 0.7)' // Darker backdrop for better visibility
-        }
-      }}>
+    >
       <DialogTitle>{isEditMode ? 'Editar Proyecto' : 'Nuevo Proyecto'}</DialogTitle>
       <DialogContent>
         <TextField
@@ -75,11 +70,19 @@ export default function ProjectDialog({
         <TextField
           label="Estado"
           select
-          value={formData.estado}
+          value={["planificado","en progreso","completado","cancelado"].includes(formData.estado) ? formData.estado : ''}
           onChange={e => handleFormChange('estado', e.target.value)}
           fullWidth
           margin="normal"
+          SelectProps={{
+            MenuProps: {
+              PaperProps: {
+                sx: { zIndex: 13010 }
+              }
+            }
+          }}
         >
+          <MenuItem value="">Seleccione estado</MenuItem>
           <MenuItem value="planificado">Planificado</MenuItem>
           <MenuItem value="en progreso">En progreso</MenuItem>
           <MenuItem value="completado">Completado</MenuItem>
