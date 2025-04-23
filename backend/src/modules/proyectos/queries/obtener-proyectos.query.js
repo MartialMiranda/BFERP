@@ -34,18 +34,18 @@ async function execute(usuarioId, filtros = {}) {
   try {
     logger.info(`Consultando proyectos para usuario: ${usuarioId}`);
     
-    // Construir la consulta base
+    // Construir la consulta base - Volvemos a una consulta más simple que sabemos que funciona
     let query = `
-      SELECT DISTINCT p.*, 
+      SELECT p.*, 
          u.nombre as creador_nombre,
-         COUNT(t.id) OVER (PARTITION BY p.id) as total_tareas,
-         COUNT(CASE WHEN t.estado = 'completada' THEN 1 END) OVER (PARTITION BY p.id) as tareas_completadas
-  FROM proyectos p
-  LEFT JOIN usuarios u ON p.creado_por = u.id
-  LEFT JOIN tareas t ON t.proyecto_id = p.id
-  LEFT JOIN equipo_usuarios eu ON eu.usuario_id = $1
-  LEFT JOIN equipos e ON e.id = eu.equipo_id
-  WHERE p.creado_por = $1 OR eu.usuario_id = $1
+         COUNT(t.id) as total_tareas,
+         COUNT(CASE WHEN t.estado = 'completada' THEN 1 END) as tareas_completadas
+      FROM proyectos p
+      LEFT JOIN usuarios u ON p.creado_por = u.id
+      LEFT JOIN tareas t ON t.proyecto_id = p.id
+      LEFT JOIN equipo_usuarios eu ON eu.usuario_id = $1
+      LEFT JOIN equipos e ON e.id = eu.equipo_id
+      WHERE (p.creado_por = $1 OR eu.usuario_id = $1)
     `;
     
     const queryParams = [usuarioId];
@@ -91,17 +91,29 @@ async function execute(usuarioId, filtros = {}) {
     // Añadir cláusulas WHERE adicionales si hay filtros
     if (whereClauses.length > 0) {
       query += ` AND ${whereClauses.join(' AND ')}`;
+      logger.info(`Filtros aplicados: ${whereClauses.join(' AND ')}`);
     }
     
+    // Agrupamos por ID del proyecto para contar tareas correctamente
+    query += ` GROUP BY p.id, u.nombre`;
+    
     // Añadir ordenamiento
-    query += ` GROUP BY p.id, u.nombre, t.id ORDER BY `;
+    query += ` ORDER BY `;
     
     if (filtros.ordenar_por) {
+      // Validar los campos permitidos para ordenar
       const camposValidos = ['nombre', 'fecha_inicio', 'fecha_fin', 'estado', 'creado_en'];
-      const campoOrden = camposValidos.includes(filtros.ordenar_por) ? 
-        `p.${filtros.ordenar_por}` : 'p.creado_en';
+      let campoOrden = 'p.creado_en'; // Valor por defecto
       
-      query += `${campoOrden} ${filtros.orden === 'asc' ? 'ASC' : 'DESC'}`;
+      if (camposValidos.includes(filtros.ordenar_por)) {
+        campoOrden = `p.${filtros.ordenar_por}`;
+      }
+      
+      // Validar el orden (asc/desc)
+      const direccion = (filtros.orden && filtros.orden.toLowerCase() === 'asc') ? 'ASC' : 'DESC';
+      
+      logger.info(`Ordenando por: ${campoOrden} ${direccion}`);
+      query += `${campoOrden} ${direccion}`;
     } else {
       query += 'p.creado_en DESC';
     }
@@ -110,6 +122,10 @@ async function execute(usuarioId, filtros = {}) {
     const pagina = filtros.pagina || 1;
     const porPagina = filtros.por_pagina || 10;
     const offset = (pagina - 1) * porPagina;
+    
+    // Para depurar, registramos la consulta completa
+    logger.info(`Consulta SQL: ${query}`);
+    logger.info(`Parámetros: ${JSON.stringify(queryParams)}`);
     
     query += ` LIMIT $${paramCount++} OFFSET $${paramCount++}`;
     queryParams.push(porPagina, offset);
@@ -132,6 +148,10 @@ async function execute(usuarioId, filtros = {}) {
     }
     
     const countParams = queryParams.slice(0, paramCount - 2); // Excluir parámetros de LIMIT y OFFSET
+    
+    // Para depurar, registramos la consulta de conteo
+    logger.info(`Consulta de conteo: ${countQuery}`);
+    logger.info(`Parámetros de conteo: ${JSON.stringify(countParams)}`);
     const totalCount = await db.one(countQuery, countParams);
     
     logger.info(`Proyectos encontrados: ${proyectos.length}, Total: ${totalCount.count}`);
@@ -143,7 +163,7 @@ async function execute(usuarioId, filtros = {}) {
         SELECT DISTINCT e.*, COUNT(eu.id) as total_miembros
         FROM equipos e
         JOIN equipo_usuarios eu ON eu.equipo_id = e.id
-        JOIN tareas t ON t.proyecto_id = $1
+        LEFT JOIN tareas t ON t.proyecto_id = $1
         WHERE e.id IN (
           SELECT equipo_id 
           FROM equipo_usuarios 
@@ -163,12 +183,17 @@ async function execute(usuarioId, filtros = {}) {
       };
     }));
 
-    // Filtro por progreso (min y max)
+    // Filtro por progreso (min y max) - Aplicamos esto después de obtener todos los datos
+    // ya que el progreso se calcula en memoria y no en la base de datos
     if (filtros.progreso_min !== undefined) {
-      proyectosConDetalles = proyectosConDetalles.filter(p => p.progreso >= parseInt(filtros.progreso_min));
+      const minProgreso = parseInt(filtros.progreso_min);
+      logger.info(`Filtrando proyectos con progreso >= ${minProgreso}%`);
+      proyectosConDetalles = proyectosConDetalles.filter(p => p.progreso >= minProgreso);
     }
     if (filtros.progreso_max !== undefined) {
-      proyectosConDetalles = proyectosConDetalles.filter(p => p.progreso <= parseInt(filtros.progreso_max));
+      const maxProgreso = parseInt(filtros.progreso_max);
+      logger.info(`Filtrando proyectos con progreso <= ${maxProgreso}%`);
+      proyectosConDetalles = proyectosConDetalles.filter(p => p.progreso <= maxProgreso);
     }
 
     return {

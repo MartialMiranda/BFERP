@@ -3,25 +3,37 @@ import { useState, useEffect } from 'react';
 import { ProjectFilters as FiltersType } from '../../types/project';
 
 interface Props {
+  searchTerm: string;
+  setSearchTerm: (value: string) => void;
   filters: FiltersType;
   setFilters: (f: FiltersType) => void;
   showFilters: boolean;
   setShowFilters: (v: boolean) => void;
   clearFilters: () => void;
+  loadProjects: () => void;
+  handleSearch: (e: React.FormEvent) => void;
 }
 
 export default function ProjectFilters({
-  filters, setFilters, showFilters, setShowFilters, clearFilters
+  searchTerm,
+  setSearchTerm,
+  filters,
+  setFilters,
+  showFilters,
+  setShowFilters,
+  clearFilters,
+  handleSearch
 }: Props) {
+  // Manejar cambios en los filtros dropdown (estado, ordenar_por, orden)
   const handleFilterChange = (field: keyof FiltersType, value: string) => {
+    // Actualizar el filtro y resetear a la primera página
     setFilters({ ...filters, [field]: value, pagina: 1 });
   };
-
-  const [localSearch, setLocalSearch] = useState(filters.nombre || '');
-  useEffect(() => { setLocalSearch(filters.nombre || ''); }, [filters.nombre]);
+  
+  // Enviar el formulario de búsqueda
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFilters({ ...filters, nombre: localSearch, pagina: 1 });
+    handleSearch(e);
   };
 
   return (
@@ -29,8 +41,8 @@ export default function ProjectFilters({
       <form onSubmit={onSubmit} style={{ display: 'flex', gap: 8 }}>
         <TextField
           label="Buscar proyecto"
-          value={localSearch}
-          onChange={e => setLocalSearch(e.target.value)}
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
           size="small"
         />
         <Button type="submit" variant="contained">Buscar</Button>
@@ -44,12 +56,12 @@ export default function ProjectFilters({
           <TextField
             label="Estado"
             select
-            value={filters.estado || ''}
+            value={filters.estado || 'todos'}
             onChange={e => handleFilterChange('estado', e.target.value)}
             size="small"
             sx={{ minWidth: 150 }}
           >
-            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="todos">Todos</MenuItem>
             <MenuItem value="planificado">Planificado</MenuItem>
             <MenuItem value="en progreso">En progreso</MenuItem>
             <MenuItem value="completado">Completado</MenuItem>

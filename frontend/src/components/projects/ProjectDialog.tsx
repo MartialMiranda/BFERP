@@ -23,7 +23,17 @@ export default function ProjectDialog({
   open, onClose, isEditMode, formData, handleFormChange, handleFormSubmit, formSubmitting
 }: Props) {
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth
+      sx={{ 
+        zIndex: 10000, // Higher z-index to prevent overlap
+        '& .MuiBackdrop-root': {
+          backgroundColor: 'rgba(0, 0, 0, 0.7)' // Darker backdrop for better visibility
+        }
+      }}>
       <DialogTitle>{isEditMode ? 'Editar Proyecto' : 'Nuevo Proyecto'}</DialogTitle>
       <DialogContent>
         <TextField

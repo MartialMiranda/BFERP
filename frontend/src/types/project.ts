@@ -34,13 +34,13 @@ export interface Team {
  * Project filters for API queries
  */
 export interface ProjectFilters {
-  estado?: 'planificado' | 'en progreso' | 'completado' | 'cancelado';
+  estado?: 'planificado' | 'en progreso' | 'completado' | 'cancelado' | 'todos' | '';
   nombre?: string;
   fecha_inicio_desde?: string;
   fecha_inicio_hasta?: string;
   fecha_fin_desde?: string;
   fecha_fin_hasta?: string;
-  ordenar_por?: 'nombre' | 'fecha_inicio' | 'fecha_fin' | 'estado' | 'creado_en';
+  ordenar_por?: 'nombre' | 'fecha_inicio' | 'fecha_fin' | 'estado' | 'creado_en' | '';
   orden?: 'asc' | 'desc';
   pagina?: number;
   por_pagina?: number;

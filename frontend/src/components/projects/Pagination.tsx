@@ -1,15 +1,9 @@
 import { Box, Pagination as MuiPagination } from '@mui/material';
-
-interface Project {
-  // Replace these fields with the actual properties of a project
-  id: number;
-  name: string;
-  // Add other relevant fields here
-}
+import { Project as ProjectType } from '../../types/project';
 
 interface Props {
   loading: boolean;
-  projects: Project[];
+  projects: ProjectType[];
   pagination: { pagina: number; total_paginas: number; };
   handlePageChange: (page: number) => void;
 }

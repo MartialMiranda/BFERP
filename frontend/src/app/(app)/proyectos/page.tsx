@@ -11,7 +11,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import { AppDispatch } from '../../../store';
 import { addNotification } from '../../../store/slices/uiSlice';
-import { Project, ProjectFilters as ProjectFiltersType } from '../../../types/project';
+import { Project as ProjectType, ProjectFilters as ProjectFiltersType } from '../../../types/project';
 import { projectService } from '../../../services/projectService';
 import dayjs from 'dayjs';
 import ProjectFilters from '../../../components/projects/ProjectFilters';
@@ -29,7 +29,7 @@ export default function ProyectosPage() {
   const dispatch = useDispatch<AppDispatch>();
   
   // Estados para la lista de proyectos
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectType[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -42,6 +42,10 @@ export default function ProyectosPage() {
   const [filters, setFilters] = useState<ProjectFiltersType>({
     pagina: 1,
     por_pagina: 10,
+    nombre: '',
+    estado: 'todos', // Usar 'todos' como valor predeterminado
+    ordenar_por: '',
+    orden: 'desc'
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -85,13 +89,32 @@ export default function ProyectosPage() {
     try {
       setLoading(true);
       
-      // Aplicar término de búsqueda si existe
-      const appliedFilters = { ...filters };
-      if (searchTerm) {
-        appliedFilters.nombre = searchTerm;
+      // Preparamos los filtros para enviar al backend
+      const apiFilters: ProjectFiltersType = {
+        pagina: filters.pagina,
+        por_pagina: filters.por_pagina,
+        orden: filters.orden
+      };
+      
+      // Filtro de búsqueda por nombre
+      if (searchTerm && searchTerm.trim() !== '') {
+        apiFilters.nombre = searchTerm.trim();
       }
       
-      const response = await projectService.getProjects(appliedFilters);
+      // Filtro por estado - solo lo incluimos si no es 'todos'
+      if (filters.estado && filters.estado !== 'todos') {
+        apiFilters.estado = filters.estado;
+      }
+      
+      // Filtro de ordenamiento
+      if (filters.ordenar_por) {
+        apiFilters.ordenar_por = filters.ordenar_por;
+      }
+      
+      console.log('Filtros enviados a la API:', apiFilters);
+      
+      // Llamada al servicio con los filtros procesados
+      const response = await projectService.getProjects(apiFilters);
       
       if (response) {
         setProjects(response.proyectos || []);
@@ -103,7 +126,7 @@ export default function ProyectosPage() {
         });
       }
     } catch (error) {
-      console.error('Error loading projects:', error);
+      console.error('Error al cargar proyectos:', error);
       dispatch(addNotification({
         message: 'Error al cargar los proyectos',
         severity: 'error',
@@ -118,34 +141,64 @@ export default function ProyectosPage() {
    */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setFilters({
-      ...filters,
-      pagina: 1, // Resetear a la primera página
-    });
-    loadProjects();
+    console.log('Buscando:', searchTerm);
+    
+    // Resetear a la primera página y mantener los demás filtros
+    setFilters(prev => ({
+      ...prev,
+      pagina: 1
+    }));
+    
+    // loadProjects se llamará automáticamente en el useEffect
+    // Ya que hemos configurado la función loadProjects para usar searchTerm directamente
   };
   
-  // Eliminado: función no utilizada para manejar cambios en los filtros
+  /**
+   * Manejar cambios en los filtros
+   */
+  const handleFilterChange = (filter: keyof ProjectFiltersType, value: string) => {
+    console.log(`Cambiando filtro ${filter} a:`, value);
+    
+    setFilters(prev => ({
+      ...prev,
+      [filter]: value,
+      pagina: 1, // Resetear a la primera página cuando cambia un filtro
+    }));
+    
+    // loadProjects se llamará automáticamente debido al useEffect
+  };
   
   /**
    * Resetear todos los filtros
    */
   const clearFilters = () => {
+    console.log('Limpiando todos los filtros');
+    
+    // Resetear el término de búsqueda
+    setSearchTerm('');
+    
+    // Resetear todos los filtros a sus valores predeterminados
     setFilters({
       pagina: 1,
       por_pagina: 10,
+      nombre: '',
+      estado: 'todos',
+      ordenar_por: '',
+      orden: 'desc'
     });
-    setSearchTerm('');
+    
+    // loadProjects se llamará automáticamente debido al useEffect
   };
   
   /**
    * Manejar cambio de página
    */
   const handlePageChange = (newPage: number) => {
-    setFilters({
-      ...filters,
+    setFilters(prevState => ({
+      ...prevState,
       pagina: newPage,
-    });
+    }));
+    // loadProjects se llamará automáticamente debido al useEffect
   };
   
   /**

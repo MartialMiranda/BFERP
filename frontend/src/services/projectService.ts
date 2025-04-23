@@ -18,22 +18,59 @@ export const projectService = {
    * @returns Response with projects and pagination
    */
   async getProjects(filters?: ProjectFilters): Promise<{ proyectos: Project[]; paginacion: Pagination }> {
+    console.log('Filtros enviados al servicio:', filters);
+    
+    // Mapeamos los parámetros según lo esperado por el backend
     const queryParams = new URLSearchParams();
     
-    // Add filters to query params if provided
+    // Add filters to query params if provided, pero solo si tienen valor
     if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
+      // Estas son las correspondencias entre frontend y backend
+      if (filters.pagina) queryParams.append('pagina', filters.pagina.toString());
+      if (filters.por_pagina) queryParams.append('por_pagina', filters.por_pagina.toString());
+      
+      // El estado solo se envía si existe y no es 'todos' (que significa mostrar todos)
+      if (filters.estado && 
+          filters.estado !== 'todos' && 
+          ['planificado', 'en progreso', 'completado', 'cancelado'].includes(filters.estado)) {
+        queryParams.append('estado', filters.estado);
+      }
+      
+      // El término de búsqueda se envía como nombre
+      if (filters.nombre && filters.nombre.trim() !== '') {
+        queryParams.append('nombre', filters.nombre.trim());
+      }
+      
+      // Ordenamiento - solo añadir si es un valor válido
+      const validOrderFields = ['nombre', 'fecha_inicio', 'fecha_fin', 'estado', 'creado_en'];
+      if (filters.ordenar_por && validOrderFields.includes(filters.ordenar_por)) {
+        queryParams.append('ordenar_por', filters.ordenar_por);
+      }
+      
+      // Orden: asc o desc
+      if (filters.orden && ['asc', 'desc'].includes(filters.orden)) {
+        queryParams.append('orden', filters.orden);
+      }
+      
+      // Otros filtros de fecha si existen
+      if (filters.fecha_inicio_desde) queryParams.append('fecha_inicio_desde', filters.fecha_inicio_desde);
+      if (filters.fecha_inicio_hasta) queryParams.append('fecha_inicio_hasta', filters.fecha_inicio_hasta);
+      if (filters.fecha_fin_desde) queryParams.append('fecha_fin_desde', filters.fecha_fin_desde);
+      if (filters.fecha_fin_hasta) queryParams.append('fecha_fin_hasta', filters.fecha_fin_hasta);
     }
     
     const queryString = queryParams.toString();
     const url = `/proyectos${queryString ? `?${queryString}` : ''}`;
     
-    const response = await apiClient.get(url);
-    return response.data;
+    console.log('URL de la petición:', url);
+    
+    try {
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error en la petición de proyectos:', error);
+      throw error;
+    }
   },
 
   /**

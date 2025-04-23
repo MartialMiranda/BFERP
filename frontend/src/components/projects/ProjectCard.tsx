@@ -1,6 +1,10 @@
-import { Card, CardContent, Typography, IconButton, Menu, MenuItem, Chip, Box } from '@mui/material';
+import { Card, CardContent, Typography, IconButton, Menu, MenuItem, Chip, Box, LinearProgress, Grid, Divider } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import DateRangeIcon from '@mui/icons-material/DateRange';
 import { Project } from '../../types/project';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface Props {
   project: Project;
@@ -18,24 +22,101 @@ export default function ProjectCard({
   project, onView, onMenuOpen, getStatusClass,
   menuAnchorEl, handleMenuClose, handleEditProject, handleDeleteClick, isMenuOpen
 }: Props) {
+  // Format dates for display
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'No establecida';
+    return format(new Date(dateString), 'dd MMM yyyy', { locale: es });
+  };
+
   return (
-    <Card sx={{ cursor: 'pointer', position: 'relative' }} onClick={onView}>
-      <CardContent>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">{project.nombre}</Typography>
-          <IconButton onClick={e => { e.stopPropagation(); onMenuOpen(e); }}>
+    <Card sx={{ cursor: 'pointer', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }} onClick={onView}>
+      <CardContent sx={{ flex: '1 0 auto' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+          <Typography variant="h6" noWrap sx={{ maxWidth: '80%' }}>{project.nombre}</Typography>
+          <IconButton 
+            onClick={e => { 
+              e.stopPropagation(); 
+              onMenuOpen(e); 
+            }}
+            size="small"
+          >
             <MoreVertIcon />
           </IconButton>
         </Box>
-        <Typography variant="body2" color="textSecondary" mb={1}>{project.descripcion}</Typography>
-        <Chip label={project.estado} className={getStatusClass(project.estado)} size="small" />
-        {/* Puedes agregar más info aquí */}
+        
+        <Typography 
+          variant="body2" 
+          color="textSecondary" 
+          mb={2}
+          sx={{ 
+            display: '-webkit-box', 
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            height: '40px'
+          }}
+        >
+          {project.descripcion || 'Sin descripción'}
+        </Typography>
+        
+        <Divider sx={{ my: 1 }} />
+        
+        <Grid container spacing={1} sx={{ mb: 1 }}>
+          <Grid item xs={12}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <CalendarTodayIcon fontSize="small" color="action" />
+              <Typography variant="caption" color="textSecondary">
+                Inicio: {formatDate(project.fecha_inicio)}
+              </Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <DateRangeIcon fontSize="small" color="action" />
+              <Typography variant="caption" color="textSecondary">
+                Fin: {formatDate(project.fecha_fin)}
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+        
+        {project.progreso !== undefined && (
+          <Box sx={{ mt: 1 }}>
+            <Box display="flex" justifyContent="space-between">
+              <Typography variant="caption">Progreso</Typography>
+              <Typography variant="caption">{project.progreso}%</Typography>
+            </Box>
+            <LinearProgress 
+              variant="determinate" 
+              value={project.progreso} 
+              sx={{ height: 6, borderRadius: 3 }} 
+            />
+          </Box>
+        )}
+        
+        <Box display="flex" alignItems="center" justifyContent="space-between" mt={2}>
+          <Chip 
+            label={project.estado} 
+            className={getStatusClass(project.estado)} 
+            size="small" 
+          />
+          <Typography variant="caption" color="textSecondary">
+            Creado: {formatDate(project.creado_en)}
+          </Typography>
+        </Box>
       </CardContent>
+      
       <Menu
         anchorEl={menuAnchorEl}
         open={isMenuOpen}
         onClose={handleMenuClose}
         onClick={e => e.stopPropagation()}
+        // Fix modal layering by using a higher z-index
+        sx={{ zIndex: 9999 }}
+        // Ensure menu closes when clicking outside
+        slotProps={{ paper: { sx: { maxWidth: '200px' } } }}
       >
         <MenuItem onClick={handleEditProject}>Editar</MenuItem>
         <MenuItem onClick={handleDeleteClick}>Eliminar</MenuItem>
