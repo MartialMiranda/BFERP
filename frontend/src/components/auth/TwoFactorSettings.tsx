@@ -45,7 +45,8 @@ export default function TwoFactorSettings() {
   const [method, setMethod] = useState<'app' | 'email'>('app');
   
   // Determinar si estamos en proceso de verificación basado en el estado global
-  const showVerification = twoFactorSetup?.pendingVerification || false;
+  // Solo mostrar la verificación si está pendiente y hay un método definido
+  const showVerification = !!twoFactorSetup?.pendingVerification && !!twoFactorSetup?.method;
   
   // Resetear el método cuando cambia el usuario
   useEffect(() => {
@@ -120,15 +121,19 @@ export default function TwoFactorSettings() {
       message: 'La autenticación de dos factores ha sido activada correctamente',
       severity: 'success',
     }));
+    // Al éxito, el slice ya limpia el estado temporal y actualiza el usuario
   };
 
   /**
    * Handle verification cancellation
    */
   const handleCancelVerification = () => {
-    // El estado principal se actualizará a través de una acción de redux
-    // para asegurar que todo está sincronizado
+    // Limpiar el estado temporal de 2FA
     dispatch({ type: 'auth/cancelTwoFactorSetup' });
+    dispatch(addNotification({
+      message: 'Se canceló la configuración de autenticación de dos factores',
+      severity: 'info',
+    }));
   };
 
   // If user is not available, show loading
@@ -217,7 +222,7 @@ export default function TwoFactorSettings() {
 
       {showVerification && twoFactorSetup && (
         <TwoFactorVerification
-          method={twoFactorSetup.method || method}
+          method={twoFactorSetup.method}
           setupData={{
             secret: twoFactorSetup.secret || '',
             otpauth_url: twoFactorSetup.qrCode || '',

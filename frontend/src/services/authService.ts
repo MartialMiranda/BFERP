@@ -114,7 +114,7 @@ export const authService = {
    * @param token - Current access token
    * @returns Setup response with QR code or confirmation
    */
-  async enable2FA(setup: TwoFactorSetup, token: string): Promise<{ qrCode?: string; message: string }> {
+  async enable2FA(setup: TwoFactorSetup, token: string): Promise<{ qrCode?: string; otpauth_url?: string; secret?: string; emailSent?: boolean; message: string }> {
     const response = await apiClient.post('/auth/enable-2fa', setup, {
       headers: {
         Authorization: `Bearer ${token}`,

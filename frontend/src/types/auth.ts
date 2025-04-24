@@ -58,6 +58,8 @@ export interface LoginResponse {
   requires2FA?: boolean;
   metodo_2fa?: string;
   userId?: string;
+  error?: string;
+  verified?: boolean;
 }
 
 /**

@@ -16,7 +16,7 @@ import {
   Cancel as CancelIcon 
 } from '@mui/icons-material';
 import QRCode from 'react-qr-code';
-import { verify2FA, selectAuthLoading, selectAuthError, selectUser } from '../../store/slices/authSlice';
+import { verify2FA, clearError, setUser, selectAuthLoading, selectAuthError, selectUser } from '../../store/slices/authSlice';
 import { AppDispatch } from '../../store';
 
 interface TwoFactorVerificationProps {
@@ -53,7 +53,8 @@ export default function TwoFactorVerification({
   useEffect(() => {
     if (method === 'app' && setupData.otpauth_url) {
       setQrValue(setupData.otpauth_url);
-      console.log('QR URL establecido en el componente');
+    } else {
+      setQrValue(null);
     }
   }, [method, setupData]);
   
@@ -70,6 +71,7 @@ export default function TwoFactorVerification({
    * Verify the 2FA code
    */
   const handleVerify = async () => {
+    // Validar entrada localmente primero
     if (!verificationCode || verificationCode.length < 6) {
       setCodeError('Por favor, introduce el código de 6 dígitos');
       return;
@@ -80,8 +82,11 @@ export default function TwoFactorVerification({
       setCodeError('Error de identificación de usuario');
       return;
     }
-
+    
     try {
+      // Limpiar cualquier error previo
+      dispatch(clearError());
+      
       console.log('Verificando código 2FA:', { 
         code: verificationCode, 
         userId: user.id,
@@ -96,11 +101,24 @@ export default function TwoFactorVerification({
       
       if (verify2FA.fulfilled.match(resultAction)) {
         console.log('Verificación 2FA exitosa');
+        // Forzar actualización inmediata en la UI
+        if (user) {
+          const updatedUser = {
+            ...user,
+            tiene_2fa: true,
+            metodo_2fa: method || 'app'
+          };
+          dispatch(setUser(updatedUser));
+        }
+        // Notificar al componente padre y manejar la transición de UI
         onSuccess();
+      } else if (verify2FA.rejected.match(resultAction)) {
+        // Si hay un payload de error en la acción rechazada, no necesitamos hacer nada
+        // ya que el slice actualizara el estado global de error
+        console.error('Verificación 2FA fallida:', resultAction.payload || resultAction.error);
       }
     } catch (error) {
-      console.error('Error en verificación 2FA:', error);
-      // Error will be handled by the reducer
+      console.error('Error inesperado en verificación 2FA:', error);
     }
   };
   
@@ -115,9 +133,9 @@ export default function TwoFactorVerification({
           <Paper elevation={0} className="p-6 mb-4" sx={{ background: 'white' }}>
             <div style={{ 
               height: "auto", 
-              margin: "0 auto", 
+              margin: "5px", 
               maxWidth: 256, 
-              width: "100%" 
+              width: "100%"      
             }}>
               <QRCode
                 size={256}
@@ -155,9 +173,10 @@ export default function TwoFactorVerification({
         </Box>
       )}
       
-      {error && (
+      {/* Solo mostrar un mensaje de error, priorizar el error local sobre el global */}
+      {(codeError || error) && (
         <Alert severity="error" className="my-3">
-          {error.message}
+          {codeError || (error ? error.message : '')}
         </Alert>
       )}
       
