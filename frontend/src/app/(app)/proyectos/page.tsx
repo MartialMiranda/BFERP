@@ -56,6 +56,9 @@ export default function ProyectosPage() {
   // Estados para diálogos
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  // Estados para mantener los IDs de proyectos (independientes del menú)
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   
   // Estado para el formulario de creación/edición
   const [formData, setFormData] = useState({
@@ -212,7 +215,8 @@ export default function ProyectosPage() {
     if (!menuState.projectId) return;
     
     try {
-      const project = await projectService.getProject(menuState.projectId);
+      const projectId = menuState.projectId;
+      const project = await projectService.getProject(projectId);
       
       setFormData({
         nombre: project.nombre,
@@ -222,6 +226,8 @@ export default function ProyectosPage() {
         estado: project.estado,
       });
       
+      // Guardamos el ID del proyecto en edición en el estado independiente
+      setEditingProjectId(projectId);
       setIsEditMode(true);
       setCreateDialogOpen(true);
       handleMenuClose();
@@ -238,6 +244,10 @@ export default function ProyectosPage() {
    * Abrir diálogo para confirmar eliminación
    */
   const handleDeleteClick = () => {
+    if (!menuState.projectId) return;
+    
+    // Guardar el ID del proyecto a eliminar en el estado independiente
+    setDeletingProjectId(menuState.projectId);
     setDeleteDialogOpen(true);
     handleMenuClose();
   };
@@ -246,18 +256,20 @@ export default function ProyectosPage() {
    * Eliminar un proyecto
    */
   const confirmDelete = async () => {
-    if (!menuState.projectId) return;
+    if (!deletingProjectId) return;
     
     try {
-      await projectService.deleteProject(menuState.projectId);
+      console.log('Eliminando proyecto con ID:', deletingProjectId);
+      await projectService.deleteProject(deletingProjectId);
       
       dispatch(addNotification({
         message: 'Proyecto eliminado correctamente',
         severity: 'success',
       }));
       
-      // Recargar proyectos
+      // Recargar proyectos y resetear estado
       loadProjects();
+      setDeletingProjectId(null);
     } catch (error) {
       console.error('Error deleting project:', error);
       dispatch(addNotification({
@@ -281,6 +293,7 @@ export default function ProyectosPage() {
       estado: 'planificado',
     });
     setIsEditMode(false);
+    setEditingProjectId(null); // Asegurarse de que no hay ID de proyecto en edición
     setCreateDialogOpen(true);
   };
   
@@ -309,15 +322,17 @@ export default function ProyectosPage() {
         estado: formData.estado as 'planificado' | 'en progreso' | 'completado' | 'cancelado',
       };
       
-      if (isEditMode && menuState.projectId) {
-        // Editar proyecto existente
-        await projectService.updateProject(menuState.projectId, projectData);
+      if (isEditMode && editingProjectId) {
+        // Editar proyecto existente usando el ID guardado en el estado independiente
+        console.log('Actualizando proyecto con ID:', editingProjectId);
+        await projectService.updateProject(editingProjectId, projectData);
         dispatch(addNotification({
           message: 'Proyecto actualizado correctamente',
           severity: 'success',
         }));
       } else {
         // Crear nuevo proyecto
+        console.log('Creando nuevo proyecto');
         await projectService.createProject(projectData);
         dispatch(addNotification({
           message: 'Proyecto creado correctamente',
@@ -325,8 +340,9 @@ export default function ProyectosPage() {
         }));
       }
       
-      // Cerrar diálogo y recargar proyectos
+      // Cerrar diálogo, resetear estados y recargar proyectos
       setCreateDialogOpen(false);
+      setEditingProjectId(null); // Resetear el ID del proyecto en edición
       loadProjects();
     } catch (error) {
       console.error('Error saving project:', error);
