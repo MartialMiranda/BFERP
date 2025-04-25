@@ -2,46 +2,12 @@ import { combineReducers, configureStore, createSlice } from '@reduxjs/toolkit';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from './customStorage';
 
-// Import reducers that are working
+// Import reducers
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
-
-// Create temporary reducers for the ones with import issues
-const projectsSlice = createSlice({
-  name: 'projects',
-  initialState: {
-    projects: [],
-    currentProject: null,
-    loading: false,
-    error: null,
-    totalProjects: 0,
-  },
-  reducers: {},
-});
-
-const tasksSlice = createSlice({
-  name: 'tasks',
-  initialState: {
-    tasks: [],
-    currentTask: null,
-    loading: false,
-    error: null,
-    totalTasks: 0,
-  },
-  reducers: {},
-});
-
-const teamsSlice = createSlice({
-  name: 'teams',
-  initialState: {
-    teams: [],
-    currentTeam: null,
-    loading: false,
-    error: null,
-    totalTeams: 0,
-  },
-  reducers: {},
-});
+import projectsReducer from './slices/projectsSlice';
+import tasksReducer from './slices/tasksSlice';
+import teamsReducer from './slices/teamsSlice';
 
 /**
  * Combined root reducer including all feature reducers
@@ -49,9 +15,9 @@ const teamsSlice = createSlice({
 const rootReducer = combineReducers({
   auth: authReducer,
   ui: uiReducer,
-  projects: projectsSlice.reducer,
-  tasks: tasksSlice.reducer,
-  teams: teamsSlice.reducer,
+  projects: projectsReducer,
+  tasks: tasksReducer,
+  teams: teamsReducer,
 });
 
 /**
