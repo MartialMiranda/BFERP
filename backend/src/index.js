@@ -20,8 +20,7 @@ const server = app.listen(PORT, () => {
 process.on('unhandledRejection', (err) => {
   logger.error('RECHAZO NO CONTROLADO! Cerrando aplicación...');
   logger.error(err.name, err.message);
-  console.error('Error no controlado:', err);
-});
+  console.error('Error no controlado:', err);});
 
 // Manejar excepciones no capturadas
 process.on('uncaughtException', (err) => {

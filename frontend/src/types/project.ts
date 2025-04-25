@@ -44,6 +44,7 @@ export interface ProjectFilters {
   orden?: 'asc' | 'desc';
   pagina?: number;
   por_pagina?: number;
+  usuario_id?: string; // ID del usuario que creó el proyecto
 }
 
 /**

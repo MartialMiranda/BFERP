@@ -6,7 +6,6 @@ import {
   UpdateProjectRequest,
 } from '../types/project';
 import { Pagination, ApiErrorResponse } from '../types/common';
-import { AxiosError } from 'axios';
 
 /**
  * Service for project-related API endpoints
@@ -18,7 +17,6 @@ export const projectService = {
    * @returns Response with projects and pagination
    */
   async getProjects(filters?: ProjectFilters): Promise<{ proyectos: Project[]; paginacion: Pagination }> {
-    console.log('Filtros enviados al servicio:', filters);
     
     // Mapeamos los parámetros según lo esperado por el backend
     const queryParams = new URLSearchParams();
@@ -62,13 +60,10 @@ export const projectService = {
     const queryString = queryParams.toString();
     const url = `/proyectos${queryString ? `?${queryString}` : ''}`;
     
-    console.log('URL de la petición:', url);
-    
     try {
       const response = await apiClient.get(url);
       return response.data;
     } catch (error) {
-      console.error('Error en la petición de proyectos:', error);
       throw error;
     }
   },

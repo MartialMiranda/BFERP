@@ -167,7 +167,7 @@ async function execute(usuarioId, filtros = {}) {
     // Ejecutar la consulta
     const tareas = await db.manyOrNone(query, queryParams);
     
-    // Consulta para obtener el total de tareas (para la paginación)
+    // Preparar consulta de conteo sin debug logs
     let countQuery = `
       SELECT COUNT(DISTINCT t.id) 
       FROM tareas t

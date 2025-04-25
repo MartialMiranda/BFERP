@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
   Button,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { AppDispatch } from '../../../store';
+import { AppDispatch, RootState } from '../../../store';
 import { addNotification } from '../../../store/slices/uiSlice';
 import { Project as ProjectType, ProjectFilters as ProjectFiltersType } from '../../../types/project';
 import { projectService } from '../../../services/projectService';
@@ -27,6 +27,7 @@ import Pagination from '../../../components/projects/Pagination';
 export default function ProyectosPage() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
   
   // Estados para la lista de proyectos
   const [projects, setProjects] = useState<ProjectType[]>([]);
@@ -113,7 +114,10 @@ export default function ProyectosPage() {
         apiFilters.ordenar_por = filters.ordenar_por;
       }
       
-      console.log('Filtros enviados a la API:', apiFilters);
+      // Filtro por usuario actual - para mostrar solo sus proyectos
+      if (user && user.id) {
+        apiFilters.usuario_id = user.id;
+      }
       
       // Llamada al servicio con los filtros procesados
       const response = await projectService.getProjects(apiFilters);
@@ -142,9 +146,7 @@ export default function ProyectosPage() {
    * Manejar el envío del formulario de búsqueda
    */
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Buscando:', searchTerm);
-    
+    e.preventDefault();    
     // Resetear a la primera página y mantener los demás filtros
     setFilters(prev => ({
       ...prev,
@@ -259,7 +261,6 @@ export default function ProyectosPage() {
     if (!deletingProjectId) return;
     
     try {
-      console.log('Eliminando proyecto con ID:', deletingProjectId);
       await projectService.deleteProject(deletingProjectId);
       
       dispatch(addNotification({
@@ -311,20 +312,37 @@ export default function ProyectosPage() {
    * Enviar formulario para crear o editar proyecto
    */
   const handleFormSubmit = async () => {
+    // Validación básica
+    if (!formData.nombre.trim()) {
+      dispatch(addNotification({
+        message: 'El nombre del proyecto es obligatorio',
+        severity: 'error',
+      }));
+      return;
+    }
+
+    if (!formData.fecha_inicio) {
+      dispatch(addNotification({
+        message: 'La fecha de inicio es obligatoria',
+        severity: 'error',
+      }));
+      return;
+    }
+
     try {
       setFormSubmitting(true);
       
+      // Preparamos los datos para enviar al API
       const projectData = {
-        nombre: formData.nombre,
-        descripcion: formData.descripcion || undefined,
-        fecha_inicio: formData.fecha_inicio.format('YYYY-MM-DD'),
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion ? formData.descripcion.trim() : '',
+        fecha_inicio: formData.fecha_inicio ? formData.fecha_inicio.format('YYYY-MM-DD') : '',
         fecha_fin: formData.fecha_fin ? formData.fecha_fin.format('YYYY-MM-DD') : undefined,
         estado: formData.estado as 'planificado' | 'en progreso' | 'completado' | 'cancelado',
       };
       
       if (isEditMode && editingProjectId) {
         // Editar proyecto existente usando el ID guardado en el estado independiente
-        console.log('Actualizando proyecto con ID:', editingProjectId);
         await projectService.updateProject(editingProjectId, projectData);
         dispatch(addNotification({
           message: 'Proyecto actualizado correctamente',
@@ -332,7 +350,6 @@ export default function ProyectosPage() {
         }));
       } else {
         // Crear nuevo proyecto
-        console.log('Creando nuevo proyecto');
         await projectService.createProject(projectData);
         dispatch(addNotification({
           message: 'Proyecto creado correctamente',
@@ -342,7 +359,7 @@ export default function ProyectosPage() {
       
       // Cerrar diálogo, resetear estados y recargar proyectos
       setCreateDialogOpen(false);
-      setEditingProjectId(null); // Resetear el ID del proyecto en edición
+      resetForm();
       loadProjects();
     } catch (error) {
       console.error('Error saving project:', error);
@@ -354,7 +371,30 @@ export default function ProyectosPage() {
       setFormSubmitting(false);
     }
   };
-  
+
+  /**
+   * Resetear el formulario a su estado inicial
+   */
+  const resetForm = () => {
+    setFormData({
+      nombre: '',
+      descripcion: '',
+      fecha_inicio: dayjs(),
+      fecha_fin: null,
+      estado: 'planificado',
+    });
+    setIsEditMode(false);
+    setEditingProjectId(null);
+  };
+
+  /**
+   * Manejar el cierre del diálogo de creación/edición
+   */
+  const handleCloseDialog = () => {
+    if (formSubmitting) return;
+    setCreateDialogOpen(false);
+    resetForm();
+  };
   
   /**
    * Obtener clase CSS para estado de proyecto
@@ -425,7 +465,7 @@ export default function ProyectosPage() {
       />
       <ProjectDialog
         open={createDialogOpen}
-        onClose={() => !formSubmitting && setCreateDialogOpen(false)}
+        onClose={handleCloseDialog}
         isEditMode={isEditMode}
         formData={formData}
         handleFormChange={handleFormChange}

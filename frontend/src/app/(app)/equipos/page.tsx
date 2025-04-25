@@ -99,17 +99,25 @@ export default function EquiposPage() {
   };
 
   const handleSave = (data: { nombre: string; descripcion?: string; proyecto_id: string; miembros?: string[] }) => {
-    const action = currentTeam
-      ? updateTeam({ ...data, id: currentTeam.id })
-      : createTeam(data);
-    dispatch(action)
-      .unwrap()
-      .then(() => {
-        dispatch(addNotification({ message: `Equipo ${currentTeam ? 'actualizado' : 'creado'} con éxito`, severity: 'success' }));
-        setDialogOpen(false);
-        setFilters({ ...filters });
-      })
-      .catch((msg) => dispatch(addNotification({ message: msg, severity: 'error' })));
+    if (currentTeam) {
+      dispatch(updateTeam({ ...data, id: currentTeam.id }))
+        .unwrap()
+        .then(() => {
+          dispatch(addNotification({ message: 'Equipo actualizado con éxito', severity: 'success' }));
+          setDialogOpen(false);
+          setFilters({ ...filters });
+        })
+        .catch((msg) => dispatch(addNotification({ message: msg, severity: 'error' })));
+    } else {
+      dispatch(createTeam(data))
+        .unwrap()
+        .then(() => {
+          dispatch(addNotification({ message: 'Equipo creado con éxito', severity: 'success' }));
+          setDialogOpen(false);
+          setFilters({ ...filters });
+        })
+        .catch((msg) => dispatch(addNotification({ message: msg, severity: 'error' })));
+    }
   };
 
   const handleDelete = (team: Team) => {

@@ -123,10 +123,6 @@ async function execute(usuarioId, filtros = {}) {
     const porPagina = filtros.por_pagina || 10;
     const offset = (pagina - 1) * porPagina;
     
-    // Para depurar, registramos la consulta completa
-    logger.info(`Consulta SQL: ${query}`);
-    logger.info(`Parámetros: ${JSON.stringify(queryParams)}`);
-    
     query += ` LIMIT $${paramCount++} OFFSET $${paramCount++}`;
     queryParams.push(porPagina, offset);
     
@@ -149,9 +145,7 @@ async function execute(usuarioId, filtros = {}) {
     
     const countParams = queryParams.slice(0, paramCount - 2); // Excluir parámetros de LIMIT y OFFSET
     
-    // Para depurar, registramos la consulta de conteo
-    logger.info(`Consulta de conteo: ${countQuery}`);
-    logger.info(`Parámetros de conteo: ${JSON.stringify(countParams)}`);
+    // Ejecutar la consulta de conteo
     const totalCount = await db.one(countQuery, countParams);
     
     logger.info(`Proyectos encontrados: ${proyectos.length}, Total: ${totalCount.count}`);

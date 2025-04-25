@@ -28,9 +28,82 @@ export default function ProjectCard({
     return format(new Date(dateString), 'dd MMM yyyy', { locale: es });
   };
 
+  // Obtener colores según el estado para aplicar en diferentes partes de la tarjeta
+  const getStatusColors = (status: string) => {
+    switch (status) {
+      case 'completado':
+        return {
+          border: '2px solid #4caf50',
+          indicator: '#4caf50',
+          bgColor: 'rgba(76, 175, 80, 0.08)',
+          progressColor: '#4caf50'
+        };
+      case 'en progreso':
+        return {
+          border: '2px solid #2196f3',
+          indicator: '#2196f3',
+          bgColor: 'rgba(33, 150, 243, 0.08)',
+          progressColor: '#2196f3'
+        };
+      case 'planificado':
+        return {
+          border: '2px solid #ff9800',
+          indicator: '#ff9800',
+          bgColor: 'rgba(255, 152, 0, 0.08)',
+          progressColor: '#ff9800'
+        };
+      case 'cancelado':
+        return {
+          border: '2px solid #f44336',
+          indicator: '#f44336',
+          bgColor: 'rgba(244, 67, 54, 0.08)',
+          progressColor: '#9e9e9e'
+        };
+      default:
+        return {
+          border: '2px solid #9e9e9e',
+          indicator: '#9e9e9e',
+          bgColor: 'rgba(158, 158, 158, 0.08)',
+          progressColor: '#9e9e9e'
+        };
+    }
+  };
+
+  const statusColors = getStatusColors(project.estado);
+
   return (
-    <Card sx={{ cursor: 'pointer', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }} onClick={onView}>
-      <CardContent sx={{ flex: '1 0 auto' }}>
+    <Card 
+      sx={{ 
+        cursor: 'pointer', 
+        position: 'relative', 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        border: statusColors.border,
+        borderRadius: 2,
+        overflow: 'hidden',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+        },
+        backgroundColor: statusColors.bgColor
+      }} 
+      onClick={onView}
+    >
+      {/* Barra indicadora de estado */}
+      <Box 
+        sx={{ 
+          position: 'absolute', 
+          left: 0, 
+          top: 0, 
+          bottom: 0, 
+          width: '6px', 
+          backgroundColor: statusColors.indicator 
+        }} 
+      />
+
+      <CardContent sx={{ flex: '1 0 auto', pl: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="h6" noWrap sx={{ maxWidth: '80%' }}>{project.nombre}</Typography>
           <IconButton 
@@ -91,7 +164,14 @@ export default function ProjectCard({
             <LinearProgress 
               variant="determinate" 
               value={project.progreso} 
-              sx={{ height: 6, borderRadius: 3 }} 
+              sx={{ 
+                height: 8, 
+                borderRadius: 4,
+                backgroundColor: 'rgba(0,0,0,0.05)',
+                '& .MuiLinearProgress-bar': {
+                  backgroundColor: statusColors.progressColor
+                }
+              }} 
             />
           </Box>
         )}
@@ -99,7 +179,12 @@ export default function ProjectCard({
         <Box display="flex" alignItems="center" justifyContent="space-between" mt={2}>
           <Chip 
             label={project.estado} 
-            className={getStatusClass(project.estado)} 
+            sx={{
+              backgroundColor: statusColors.indicator,
+              color: '#fff',
+              fontWeight: 'bold',
+              textTransform: 'capitalize'
+            }}
             size="small" 
           />
           <Typography variant="caption" color="textSecondary">

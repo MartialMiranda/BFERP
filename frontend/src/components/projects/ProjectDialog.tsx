@@ -70,7 +70,7 @@ export default function ProjectDialog({
         <TextField
           label="Estado"
           select
-          value={["planificado","en progreso","completado","cancelado"].includes(formData.estado) ? formData.estado : ''}
+          value={formData.estado || ''}
           onChange={e => handleFormChange('estado', e.target.value)}
           fullWidth
           margin="normal"
