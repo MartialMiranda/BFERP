@@ -34,7 +34,10 @@ interface TaskFormProps {
   task?: Task;
   isLoading: boolean;
   projectOptions: { value: string; label: string }[];
-  userOptions: { value: string; label: string }[];
+  users: { id: string; nombre: string }[];
+  loadingUsers: boolean;
+  errorUsers: string | null;
+  onProjectChange?: (projectId: string | null) => void;
 }
 
 /**
@@ -66,7 +69,10 @@ const TaskForm = ({
   task,
   isLoading,
   projectOptions,
-  userOptions,
+  users,
+  loadingUsers,
+  errorUsers,
+  onProjectChange,
 }: TaskFormProps) => {
   const isEditMode = !!task;
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(
@@ -79,6 +85,7 @@ const TaskForm = ({
     reset,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<TaskFormInputs>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
@@ -92,27 +99,39 @@ const TaskForm = ({
     },
   });
 
-  /**
-   * Restablecer el formulario cuando cambian los datos de la tarea
-   */
+  const selectedProjectId = watch('proyecto_id');
+
   useEffect(() => {
     if (open) {
+      const defaultProjectId = task?.proyecto_id || '';
       reset({
         titulo: task?.titulo || '',
         descripcion: task?.descripcion || '',
         estado: (task?.estado || 'pendiente') as 'pendiente' | 'en progreso' | 'completada' | 'bloqueada',
         prioridad: (task?.prioridad || 'media') as 'baja' | 'media' | 'alta',
-        proyecto_id: task?.proyecto_id || '',
+        proyecto_id: defaultProjectId,
         fecha_vencimiento: task?.fecha_vencimiento ? dayjs(task.fecha_vencimiento).toDate() : null,
-        asignado_a: task?.asignado_a || '',
+        asignado_a: (task?.proyecto_id === defaultProjectId && task?.asignado_a) ? task.asignado_a : '',
       });
       setSelectedDate(task?.fecha_vencimiento ? dayjs(task.fecha_vencimiento) : null);
+      if (onProjectChange) {
+        onProjectChange(defaultProjectId || null);
+      }
+    } else {
+      // reset(); // Comentado porque page.tsx ya limpia al cerrar
     }
-  }, [open, task, reset]);
+  }, [open, task, reset, onProjectChange]);
 
-  /**
-   * Manejar el envío del formulario
-   */
+  useEffect(() => {
+    const currentAssignee = watch('asignado_a');
+    if (currentAssignee) {
+      const isValidAssignee = users.some(user => user.id === currentAssignee);
+      if (!isValidAssignee) {
+        setValue('asignado_a', ''); // Clear if the current assignee is no longer valid
+      }
+    }
+  }, [selectedProjectId, users, setValue, watch]);
+
   const onSubmit = (data: TaskFormInputs) => {
     if (task) {
       const updateData: UpdateTaskRequest = {
@@ -138,9 +157,6 @@ const TaskForm = ({
     }
   };
 
-  /**
-   * Manejar el cambio de fecha
-   */
   const handleDateChange = (date: dayjs.Dayjs | null) => {
     setSelectedDate(date);
     setValue('fecha_vencimiento', date ? date.toDate() : null);
@@ -220,7 +236,15 @@ const TaskForm = ({
                     <Select
                       {...field}
                       label="Proyecto"
+                      onChange={(e) => {
+                        field.onChange(e);
+                        const newProjectId = e.target.value as string;
+                        if (onProjectChange) {
+                          onProjectChange(newProjectId || null);
+                        }
+                      }}
                     >
+                      <MenuItem value="">Seleccionar proyecto</MenuItem>
                       {projectOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
                           {option.label}
@@ -324,7 +348,7 @@ const TaskForm = ({
                 render={({ field }) => (
                   <FormControl
                     fullWidth
-                    error={!!errors.asignado_a}
+                    error={!!errors.asignado_a || !!errorUsers}
                     variant="outlined"
                   >
                     <InputLabel>Asignar a</InputLabel>
@@ -332,16 +356,19 @@ const TaskForm = ({
                       {...field}
                       label="Asignar a"
                       value={field.value || ''}
+                      disabled={loadingUsers}
                     >
-                      <MenuItem value="">Sin asignar</MenuItem>
-                      {userOptions.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
+                      <MenuItem value="" disabled={!selectedProjectId}>
+                        <em>{selectedProjectId ? (loadingUsers ? 'Cargando...' : 'Sin asignar') : 'Seleccione un proyecto primero'}</em>
+                      </MenuItem>
+                      {!loadingUsers && !errorUsers && users.map((user) => (
+                        <MenuItem key={user.id} value={user.id}>
+                          {user.nombre}
                         </MenuItem>
                       ))}
                     </Select>
-                    {errors.asignado_a && (
-                      <FormHelperText>{errors.asignado_a.message}</FormHelperText>
+                    {(errors.asignado_a || errorUsers) && (
+                      <FormHelperText>{errors.asignado_a?.message || errorUsers}</FormHelperText>
                     )}
                   </FormControl>
                 )}

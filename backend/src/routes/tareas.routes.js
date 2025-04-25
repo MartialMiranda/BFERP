@@ -152,7 +152,7 @@ router.post(
     body('descripcion').optional(),
     body('estado').optional().isIn(['pendiente', 'en progreso', 'completada', 'cancelada']).withMessage('Estado inválido'),
     body('prioridad').optional().isIn(['baja', 'media', 'alta', 'urgente']).withMessage('Prioridad inválida'),
-    body('fecha_vencimiento').optional().isDate().withMessage('Formato de fecha inválido'),
+    body('fecha_vencimiento').optional().isISO8601().withMessage('Formato de fecha inválido'),
     body('equipo_id').notEmpty().withMessage('El ID del equipo es obligatorio').isUUID().withMessage('ID de equipo inválido'),
     body('asignado_a').optional().isUUID().withMessage('ID de usuario inválido'),
     body('etiquetas').optional().isArray().withMessage('Las etiquetas deben ser un array')
@@ -192,7 +192,7 @@ router.put(
     body('descripcion').optional(),
     body('estado').optional().isIn(['pendiente', 'en progreso', 'completada', 'cancelada']).withMessage('Estado inválido'),
     body('prioridad').optional().isIn(['baja', 'media', 'alta', 'urgente']).withMessage('Prioridad inválida'),
-    body('fecha_vencimiento').optional().isDate().withMessage('Formato de fecha inválido'),
+    body('fecha_vencimiento').optional().isISO8601().withMessage('Formato de fecha inválido'),
     body('asignado_a').optional().isUUID().withMessage('ID de usuario inválido'),
     body('etiquetas').optional().isArray().withMessage('Las etiquetas deben ser un array')
   ],
