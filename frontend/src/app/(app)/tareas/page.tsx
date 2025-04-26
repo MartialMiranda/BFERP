@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Paper } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store'; 
@@ -15,9 +15,10 @@ import {
   clearTasksError,
 } from '@/store/slices/tasksSlice'; 
 import { fetchProjects } from '@/store/slices/projectsSlice'; 
-import { projectService } from '@/services/projectService'; 
 import { addNotification } from '@/store/slices/uiSlice'; 
 import { userService } from '@/services/userService'; 
+import { teamService } from '@/services/teamService'; 
+import { projectService } from '@/services/projectService';
 import { User } from '@/types/user';
 import { TaskFilters as TaskFiltersType } from '@/types/task';
 import TaskFilters from '@/components/modules/tareas/TaskFilters';
@@ -55,12 +56,16 @@ const TasksPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
 
+  const [teamOptions, setTeamOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
+  const [errorTeams, setErrorTeams] = useState<string | null>(null);
+
   const initialFilters: TaskFiltersType = {
     titulo: '',
     estado: undefined,
     prioridad: undefined,
-    proyecto_id: '',
-    asignado_a: '',
+    proyecto_id: undefined,
+    asignado_a: undefined,
     fecha_vencimiento_desde: undefined,
     fecha_vencimiento_hasta: undefined,
     ordenar_por: 'fecha_vencimiento',
@@ -73,14 +78,16 @@ const TasksPage = () => {
 
   // Effects
   useEffect(() => {
+    // Fetch tasks when filters change
     dispatch(fetchTasks(filters));
   }, [dispatch, filters]);
   useEffect(() => {
-    dispatch(fetchProjects({ pagina: 1, por_pagina: 1000 }));
+    // Load only this user's projects on mount
+    dispatch(fetchProjects({ pagina: 1, por_pagina: 100, usuario_id: currentUser.id }));
     userService.getUsers()
       .then(setUsers)
-      .catch(() => dispatch(addNotification({ message: 'Error cargando usuarios globales', severity: 'error' })));
-  }, [dispatch]);
+      .catch(() => dispatch(addNotification({ message: 'Error cargando usuarios globales', severity: 'error' })));  
+  }, [dispatch, currentUser.id]);
   useEffect(() => {
     if (error) {
       dispatch(addNotification({ message: error, severity: 'error' }));
@@ -96,28 +103,37 @@ const TasksPage = () => {
       setLoadingMembers(true);
       setErrorMembers(null);
       setProjectMembers([]);
-
-      // TODO: replace with real API call
-      (async () => {
-        try {
-          await new Promise(r => setTimeout(r, 300));
-          setProjectMembers(users.filter(u => u.id)); // fallback global users
-        } catch (err) {
-          setErrorMembers('Error cargando miembros del proyecto');
-        } finally {
-          setLoadingMembers(false);
-        }
-      })();
+      projectService.getProjectUsers(selectedProjectId)
+        .then(data => setProjectMembers(data))
+        .catch((err: any) => setErrorMembers(err.response?.data?.error || err.message || 'Error cargando miembros del proyecto'))
+        .finally(() => setLoadingMembers(false));
     } else {
       setProjectMembers([]);
     }
-  }, [selectedProjectId, users]);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      setLoadingTeams(true);
+      setErrorTeams(null);
+      teamService.getTeams({ proyecto_id: selectedProjectId })
+        .then(data => setTeamOptions(data.equipos.map(e => ({ value: e.id, label: e.nombre }))))
+        .catch(err => setErrorTeams(err.response?.data?.error || err.message || 'Error cargando equipos'))
+        .finally(() => setLoadingTeams(false));
+    } else {
+      setTeamOptions([]);
+    }
+  }, [selectedProjectId]);
 
   // Options
-  const userProjects = currentUser ? allProjects.filter((p: any) => p.creador_id === currentUser.id) : [];
-  const projectOptionsForForm = userProjects.map(p => ({ value: p.id, label: p.nombre || '' }));
+  // Derivar opciones de proyectos desde Redux state
+  const projectOptionsForForm = allProjects
+    .filter(p => p.creado_por === currentUser.id)
+    .map(p => ({ value: p.id, label: p.nombre || '' }));
   const userOptionsForAssignment = projectMembers.map(u => ({ value: u.id, label: u.nombre || u.email || '' }));
-  const projectOptionsForFilter = allProjects.map(p => ({ value: p.id, label: p.nombre || '' }));
+  const projectOptionsForFilter = allProjects
+    .filter(p => p.creado_por === currentUser.id)
+    .map(p => ({ value: p.id, label: p.nombre || '' }));
   const userOptionsForFilter = users.map(u => ({ value: u.id, label: u.nombre || u.email || '' }));
 
   // Handlers
@@ -133,8 +149,9 @@ const TasksPage = () => {
   };
   const handleAddTask = () => {
     dispatch(setCurrentTask(null));
-    setSelectedProjectId(null); // Resetear proyecto seleccionado al abrir para crear
-    setProjectMembers([]); // Resetear miembros
+    setSelectedProjectId(null);
+    setProjectMembers([]);
+    setTeamOptions([]);
     setFormOpen(true);
   };
   const handleViewTask = (id: string) => {
@@ -147,6 +164,7 @@ const TasksPage = () => {
         } else {
           setSelectedProjectId(null);
           setProjectMembers([]);
+          setTeamOptions([]);
         }
         setFormOpen(true);
     });
@@ -177,14 +195,15 @@ const TasksPage = () => {
         setFormOpen(false);
         setSelectedProjectId(null); // Limpiar estado al guardar
         setProjectMembers([]);
+        setTeamOptions([]);
         setFilters({ ...filters }); // Refrescar lista
       })
       .catch((msg: string) => dispatch(addNotification({ message: msg, severity: 'error' })))
       .finally(() => setFormLoading(false));
   };
-  const handleProjectChange = useCallback((projectId: string | null) => {
+  const handleProjectChange = (projectId: string | null) => {
     setSelectedProjectId(projectId);
-  }, []);
+  };
 
   const loadingUsers = loadingMembers;
   const errorUsers = errorMembers;
@@ -235,6 +254,9 @@ const TasksPage = () => {
         loadingUsers={loadingUsers}
         errorUsers={errorUsers}
         onProjectChange={handleProjectChange}
+        teamOptions={teamOptions}
+        loadingTeams={loadingTeams}
+        errorTeams={errorTeams}
       />
       
       {/* Diálogo de detalles de tarea */}

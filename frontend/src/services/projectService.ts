@@ -6,6 +6,7 @@ import {
   UpdateProjectRequest,
 } from '../types/project';
 import { Pagination, ApiErrorResponse } from '../types/common';
+import { User } from '../types/user';
 
 /**
  * Service for project-related API endpoints
@@ -135,5 +136,14 @@ export const projectService = {
    */
   async removeTeamFromProject(projectId: string, teamId: string): Promise<void> {
     await apiClient.delete(`/proyectos/${projectId}/equipos/${teamId}`);
+  },
+
+  /**
+   * Obtener usuarios asignados a un proyecto
+   * @param projectId - ID del proyecto
+   */
+  async getProjectUsers(projectId: string): Promise<User[]> {
+    const response = await apiClient.get<User[]>(`/proyectos/${projectId}/usuarios`);
+    return response.data;
   },
 };

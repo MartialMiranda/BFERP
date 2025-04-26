@@ -15,11 +15,9 @@ const TasksHeader: React.FC<TasksHeaderProps> = ({ onAddTask }) => {
     <>
       {/* Navegación de migas de pan */}
       <Breadcrumbs aria-label="breadcrumb" className="py-2">
-        <Link href="/dashboard" passHref>
-          <MuiLink underline="hover" color="inherit">
-            Dashboard
-          </MuiLink>
-        </Link>
+        <MuiLink component={Link} href="/dashboard" underline="hover" color="inherit">
+          Dashboard
+        </MuiLink>
         <Typography color="textPrimary">Tareas</Typography>
       </Breadcrumbs>
       

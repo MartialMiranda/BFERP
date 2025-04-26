@@ -26,6 +26,7 @@ import { Task, CreateTaskRequest, UpdateTaskRequest } from '../../../types/task'
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { userService } from '@/services/userService';
 
 interface TaskFormProps {
   open: boolean;
@@ -38,6 +39,9 @@ interface TaskFormProps {
   loadingUsers: boolean;
   errorUsers: string | null;
   onProjectChange?: (projectId: string | null) => void;
+  teamOptions: { value: string; label: string }[];
+  loadingTeams: boolean;
+  errorTeams: string | null;
 }
 
 /**
@@ -53,6 +57,7 @@ const taskFormSchema = z.object({
   estado: z.string().min(1, 'El estado es requerido'),
   prioridad: z.string().min(1, 'La prioridad es requerida'),
   proyecto_id: z.string().min(1, 'El proyecto es requerido'),
+  equipo_id: z.string().min(1, 'El equipo es requerido'),
   fecha_vencimiento: z.date().nullable(),
   asignado_a: z.string().optional()
 });
@@ -73,6 +78,9 @@ const TaskForm = ({
   loadingUsers,
   errorUsers,
   onProjectChange,
+  teamOptions,
+  loadingTeams,
+  errorTeams,
 }: TaskFormProps) => {
   const isEditMode = !!task;
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(
@@ -94,6 +102,7 @@ const TaskForm = ({
       estado: task?.estado || 'pendiente',
       prioridad: task?.prioridad || 'media',
       proyecto_id: task?.proyecto_id || '',
+      equipo_id: task?.equipo_id || '',
       fecha_vencimiento: task?.fecha_vencimiento ? dayjs(task.fecha_vencimiento).toDate() : null,
       asignado_a: task?.asignado_a || '',
     },
@@ -110,17 +119,14 @@ const TaskForm = ({
         estado: (task?.estado || 'pendiente') as 'pendiente' | 'en progreso' | 'completada' | 'bloqueada',
         prioridad: (task?.prioridad || 'media') as 'baja' | 'media' | 'alta',
         proyecto_id: defaultProjectId,
+        equipo_id: task?.equipo_id || '',
         fecha_vencimiento: task?.fecha_vencimiento ? dayjs(task.fecha_vencimiento).toDate() : null,
         asignado_a: (task?.proyecto_id === defaultProjectId && task?.asignado_a) ? task.asignado_a : '',
       });
       setSelectedDate(task?.fecha_vencimiento ? dayjs(task.fecha_vencimiento) : null);
-      if (onProjectChange) {
-        onProjectChange(defaultProjectId || null);
-      }
-    } else {
-      // reset(); // Comentado porque page.tsx ya limpia al cerrar
+      onProjectChange?.(defaultProjectId || null);
     }
-  }, [open, task, reset, onProjectChange]);
+  }, [open, task, reset]);
 
   useEffect(() => {
     const currentAssignee = watch('asignado_a');
@@ -131,6 +137,11 @@ const TaskForm = ({
       }
     }
   }, [selectedProjectId, users, setValue, watch]);
+
+  useEffect(() => {
+    // Also clear team selection when project changes
+    setValue('equipo_id', '');
+  }, [selectedProjectId, setValue]);
 
   const onSubmit = (data: TaskFormInputs) => {
     if (task) {
@@ -150,7 +161,7 @@ const TaskForm = ({
         estado: data.estado as 'pendiente' | 'en progreso' | 'completada' | 'bloqueada',
         prioridad: data.prioridad as 'baja' | 'media' | 'alta',
         fecha_vencimiento: data.fecha_vencimiento ? data.fecha_vencimiento.toISOString() : undefined,
-        equipo_id: data.proyecto_id, // Mapeamos proyecto_id a equipo_id
+        equipo_id: data.equipo_id,
         asignado_a: data.asignado_a || undefined
       };
       onSave(createData);
@@ -171,7 +182,7 @@ const TaskForm = ({
       scroll="paper"
     >
       <DialogTitle className="flex justify-between items-center">
-        <Typography variant="h6">
+        <Typography variant="h6" component="span">
           {isEditMode ? 'Editar tarea' : 'Crear nueva tarea'}
         </Typography>
         <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">
@@ -237,11 +248,13 @@ const TaskForm = ({
                       {...field}
                       label="Proyecto"
                       onChange={(e) => {
-                        field.onChange(e);
-                        const newProjectId = e.target.value as string;
-                        if (onProjectChange) {
-                          onProjectChange(newProjectId || null);
-                        }
+                        const newProjectId = (e.target as HTMLInputElement).value;
+                        // Update form value to selected project
+                        field.onChange(newProjectId);
+                        // Clear team selection when project changes
+                        setValue('equipo_id', '');
+                        // Notify parent to fetch members/teams
+                        onProjectChange?.(newProjectId);
                       }}
                     >
                       <MenuItem value="">Seleccionar proyecto</MenuItem>
@@ -253,6 +266,41 @@ const TaskForm = ({
                     </Select>
                     {errors.proyecto_id && (
                       <FormHelperText>{errors.proyecto_id.message}</FormHelperText>
+                    )}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <Controller
+                name="equipo_id"
+                control={control}
+                render={({ field }) => (
+                  <FormControl
+                    fullWidth
+                    error={!!errors.equipo_id}
+                    variant="outlined"
+                    required
+                  >
+                    <InputLabel>Equipo</InputLabel>
+                    <Select
+                      {...field}
+                      label="Equipo"
+                      disabled={!selectedProjectId || loadingTeams}
+                    >
+                      <MenuItem value="">Seleccionar equipo</MenuItem>
+                      {teamOptions.map(option => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.equipo_id && (
+                      <FormHelperText>{errors.equipo_id.message}</FormHelperText>
+                    )}
+                    {errorTeams && (
+                      <FormHelperText error>{errorTeams}</FormHelperText>
                     )}
                   </FormControl>
                 )}

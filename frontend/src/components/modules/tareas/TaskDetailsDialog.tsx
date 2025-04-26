@@ -128,7 +128,7 @@ const TaskDetailsDialog = ({
       scroll="paper"
     >
       <DialogTitle className="flex justify-between items-center">
-        <Typography variant="h6" className="font-semibold">
+        <Typography variant="h6" component="span" className="font-semibold">
           Detalles de la Tarea
         </Typography>
         <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">

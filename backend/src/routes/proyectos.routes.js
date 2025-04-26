@@ -9,6 +9,7 @@ const actualizarProyectoCommand = require('../modules/proyectos/commands/actuali
 const eliminarProyectoCommand = require('../modules/proyectos/commands/eliminar-proyecto.command');
 const obtenerProyectosQuery = require('../modules/proyectos/queries/obtener-proyectos.query');
 const obtenerProyectoQuery = require('../modules/proyectos/queries/obtener-proyecto.query');
+const obtenerUsuariosProyectoQuery = require('../modules/proyectos/queries/obtener-usuarios-proyecto.query');
 const { verifyToken } = require('../middleware/auth.middleware');
 const winston = require('winston');
 
@@ -122,6 +123,33 @@ router.get(
       }
       
       res.status(500).json({ error: 'Error al obtener el proyecto' });
+    }
+  }
+);
+
+/**
+ * @route   GET /api/proyectos/:id/usuarios
+ * @desc    Obtener usuarios de un proyecto específico por ID
+ * @access  Private
+ */
+router.get(
+  '/:id/usuarios',
+  verifyToken,
+  [
+    param('id').isUUID().withMessage('ID de proyecto inválido')
+  ],
+  validarErrores,
+  async (req, res) => {
+    try {
+      logger.info(`Solicitud GET /api/proyectos/${req.params.id}/usuarios de usuario: ${req.user.id}`);
+      const usuarios = await obtenerUsuariosProyectoQuery.execute(req.params.id, req.user.id);
+      res.json(usuarios);
+    } catch (error) {
+      logger.error(`Error en GET /api/proyectos/${req.params.id}/usuarios: ${error.message}`);
+      if (error.message.includes('no encontrado') || error.message.includes('permisos')) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Error al obtener usuarios del proyecto' });
     }
   }
 );

@@ -21,6 +21,10 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import LowPriorityIcon from '@mui/icons-material/LowPriority';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import BlockIcon from '@mui/icons-material/Block';
 import { Task } from '../../../types/task';
 
 interface TaskListProps {
@@ -116,6 +120,33 @@ const TaskList = ({ tasks, loading, onViewTask, onEditTask, onDeleteTask }: Task
     }
   };
 
+  // Icono según estado de tarea
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pendiente':
+        return <HourglassEmptyIcon color="warning" />;
+      case 'en progreso':
+        return <AutorenewIcon color="info" />;
+      case 'completada':
+        return <CheckCircleIcon color="success" />;
+      case 'bloqueada':
+        return <BlockIcon color="error" />;
+      default:
+        return <AssignmentIcon />;
+    }
+  };
+
+  // Clase de borde según estado
+  const getStatusBorderClass = (status: string) => {
+    switch (status) {
+      case 'pendiente': return 'border-secondary-500';
+      case 'en progreso': return 'border-primary-500';
+      case 'completada': return 'border-success-500';
+      case 'bloqueada': return 'border-error-500';
+      default: return 'border-gray-300';
+    }
+  };
+
   if (loading) {
     return (
       <Box className="flex justify-center items-center p-8">
@@ -141,8 +172,9 @@ const TaskList = ({ tasks, loading, onViewTask, onEditTask, onDeleteTask }: Task
     <Grid container spacing={3}>
       {tasks.map((task) => (
         <Grid item xs={12} md={6} lg={4} key={task.id}>
-          <Card 
-            className="h-full transition-shadow hover:shadow-md cursor-pointer"
+          <Card
+            className={`h-full transition-shadow hover:shadow-lg cursor-pointer border-l-4 ${getStatusBorderClass(task.estado)}`}
+            elevation={2}
             onClick={() => onViewTask(task.id)}
           >
             <Box className="p-4">
@@ -165,6 +197,7 @@ const TaskList = ({ tasks, loading, onViewTask, onEditTask, onDeleteTask }: Task
               
               <Box className="flex gap-2 mt-2 flex-wrap">
                 <Chip
+                  icon={getStatusIcon(task.estado)}
                   label={
                     task.estado === 'pendiente'
                       ? 'Pendiente'
@@ -175,10 +208,12 @@ const TaskList = ({ tasks, loading, onViewTask, onEditTask, onDeleteTask }: Task
                       : 'Bloqueada'
                   }
                   size="small"
-                  className={getStatusClass(task.estado)}
+                  className={`${getStatusClass(task.estado)} font-medium`}
+                  variant="outlined"
                 />
                 
                 <Chip
+                  icon={getPriorityIcon(task.prioridad)}
                   label={
                     task.prioridad === 'alta'
                       ? 'Alta'
@@ -187,7 +222,8 @@ const TaskList = ({ tasks, loading, onViewTask, onEditTask, onDeleteTask }: Task
                       : 'Baja'
                   }
                   size="small"
-                  className={getPriorityClass(task.prioridad)}
+                  className={`${getPriorityClass(task.prioridad)} font-medium`}
+                  variant="outlined"
                 />
               </Box>
               
@@ -207,7 +243,7 @@ const TaskList = ({ tasks, loading, onViewTask, onEditTask, onDeleteTask }: Task
                 {task.asignado_a ? (
                   <>
                     <Avatar 
-                      className="w-6 h-6 bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 text-xs mr-2"
+                      className="w-4 h-4 bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 text-xs mr-2"
                     >
                       {task.asignado_nombre?.substring(0, 1) || '?'}
                     </Avatar>

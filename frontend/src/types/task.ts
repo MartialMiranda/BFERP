@@ -9,6 +9,7 @@ export interface Task {
   estado: 'pendiente' | 'en progreso' | 'completada' | 'bloqueada';
   fecha_vencimiento: string | null;
   proyecto_id: string;
+  equipo_id: string;
   asignado_a: string | null;
   creado_en: string;
   actualizado_en: string;

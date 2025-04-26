@@ -40,7 +40,8 @@ export const fetchTaskById = createAsyncThunk(
   'tasks/fetchTaskById',
   async (taskId: string, { rejectWithValue }) => {
     try {
-      const response = await taskService.getTaskById(taskId);
+      // Use getTask since service method is named 'getTask'
+      const response = await taskService.getTask(taskId);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Error al obtener la tarea');
@@ -116,8 +117,13 @@ const tasksSlice = createSlice({
       })
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.loading = false;
-        state.tasks = action.payload.tareas || [];
-        state.totalTasks = action.payload.paginacion?.total || action.payload.tareas?.length || 0;
+        // Deduplicate tasks by id
+        const tareas = action.payload.tareas || [];
+        const uniqueTasks: Task[] = [];
+        const ids = new Set<string>();
+        tareas.forEach(t => { if (!ids.has(t.id)) { ids.add(t.id); uniqueTasks.push(t); } });
+        state.tasks = uniqueTasks;
+        state.totalTasks = action.payload.paginacion?.total || uniqueTasks.length;
       })
       .addCase(fetchTasks.rejected, (state, action) => {
         state.loading = false;

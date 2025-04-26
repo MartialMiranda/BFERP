@@ -24,7 +24,8 @@ export const taskService = {
     // Add filters to query params if provided
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        // Only append meaningful filter values (exclude undefined, null, empty strings)
+        if (value !== undefined && value !== null && value !== '') {
           queryParams.append(key, value.toString());
         }
       });
@@ -50,7 +51,8 @@ export const taskService = {
     // Add filters to query params if provided
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && key !== 'proyecto_id') {
+        // Exclude proyecto_id (already added) and empty filters
+        if (key !== 'proyecto_id' && value !== undefined && value !== null && value !== '') {
           queryParams.append(key, value.toString());
         }
       });

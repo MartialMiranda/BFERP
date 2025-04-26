@@ -35,17 +35,26 @@ async function execute(tarea, usuarioId) {
   try {
     logger.info(`Creando nueva tarea: ${tarea.titulo} por usuario: ${usuarioId}`);
     
-    // Verificar que el equipo existe y que el usuario tiene acceso al equipo
-    const equipo = await db.oneOrNone(`
-      SELECT e.*, pe.proyecto_id 
+    // Validate that the team exists and the user has access (project owner or team member)
+    const equipo = await db.oneOrNone(
+      `
+      SELECT e.*, pe.proyecto_id
       FROM equipos e
       JOIN proyecto_equipos pe ON e.id = pe.equipo_id
-      LEFT JOIN equipo_usuarios eu ON e.id = eu.equipo_id
-      WHERE e.id = $1 AND (
-        eu.usuario_id = $2 AND eu.rol = 'lider'
-        OR eu.usuario_id = $2
-      )
-    `, [tarea.equipo_id, usuarioId]);
+      JOIN proyectos p ON p.id = pe.proyecto_id
+      WHERE e.id = $1
+        AND (
+          p.creado_por = $2
+          OR EXISTS (
+            SELECT 1
+            FROM equipo_usuarios eu
+            WHERE eu.equipo_id = e.id AND eu.usuario_id = $2
+          )
+        )
+      LIMIT 1
+      `,
+      [tarea.equipo_id, usuarioId]
+    );
     
     if (!equipo) {
       logger.warn(`Equipo no encontrado o sin permisos para crear tarea: ${tarea.equipo_id}`);
@@ -57,6 +66,7 @@ async function execute(tarea, usuarioId) {
       const miembroEquipo = await db.oneOrNone(`
         SELECT 1 FROM equipo_usuarios 
         WHERE equipo_id = $1 AND usuario_id = $2
+        LIMIT 1
       `, [tarea.equipo_id, tarea.asignado_a]);
       
       if (!miembroEquipo) {
