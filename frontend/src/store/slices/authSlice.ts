@@ -480,7 +480,7 @@ const authSlice = createSlice({
       })
       .addCase(enable2FA.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload ? { message: (action.payload as any).message } : { message: 'Error al activar 2FA' };
+        state.error = action.payload ? { message: (action.payload as ApiErrorResponse).message } : { message: 'Error al activar 2FA' };
         state.twoFactorSetup = {
           isActivating: false,
           qrCode: null,
@@ -548,7 +548,7 @@ const authSlice = createSlice({
       })
       .addCase(verify2FA.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload ? { message: (action.payload as any).message } : { message: 'Error al verificar 2FA' };
+        state.error = action.payload ? { message: (action.payload as ApiErrorResponse).message } : { message: 'Error al verificar 2FA' };
         // No limpiar twoFactorSetup para permitir reintentos/cancelar
       })
       .addCase(disable2FA.fulfilled, (state) => {
@@ -565,7 +565,7 @@ const authSlice = createSlice({
         };
       })
       .addCase(disable2FA.rejected, (state, action) => {
-        state.error = action.payload ? { message: (action.payload as any).message } : { message: 'Error al desactivar 2FA' };
+        state.error = action.payload ? { message: (action.payload as ApiErrorResponse).message } : { message: 'Error al desactivar 2FA' };
       })
       .addCase(login.pending, (state) => {
         state.loading = true;
