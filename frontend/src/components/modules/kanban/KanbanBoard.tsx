@@ -1,55 +1,92 @@
 'use client';
 
-import { Box, Grid, Typography } from '@mui/material';
-import KanbanColumn from './KanbanColumn';
+import React from 'react';
+import { Box, Paper, Typography } from '@mui/material';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import KanbanTask from './KanbanTask';
 import { Task } from '@/types/task';
 
-type TaskStatus = 'pendiente' | 'en progreso' | 'completada';
+// Derive statuses from Task type
+type TaskStatus = Task['estado'];
 
 interface KanbanBoardProps {
   tasks: Record<TaskStatus, Task[]>;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
+  onRefresh: () => void;
 }
 
 const columnTitles: Record<TaskStatus, string> = {
   pendiente: 'Pendiente',
   'en progreso': 'En Progreso',
-  completada: 'Completada'
-} as const;
+  completada: 'Completada',
+  bloqueada: 'Bloqueada',
+};
 
-const KanbanBoard = ({ tasks, onStatusChange }: KanbanBoardProps) => {
-  const totalTasks = Object.values(tasks).reduce((sum, taskList) => sum + taskList.length, 0);
-
-  if (totalTasks === 0) {
-    return (
-      <Box sx={{ 
-        height: '60vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center' 
-      }}>
-        <Typography variant="h6" color="text.secondary">
-          No hay tareas para mostrar. Ajuste los filtros o cree nuevas tareas.
-        </Typography>
-      </Box>
-    );
-  }
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onStatusChange, onRefresh }) => {
+  const handleDragEnd = async ({ source, destination, draggableId }: DropResult) => {
+    if (!destination) return;
+    const sourceCol = source.droppableId as TaskStatus;
+    const destCol = destination.droppableId as TaskStatus;
+    if (sourceCol === destCol && source.index === destination.index) return;
+    try {
+      await onStatusChange(draggableId, destCol);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
-    <Box sx={{ mt: 3, height: 'calc(100vh - 240px)' }}>
-      <Grid container spacing={3} sx={{ height: '100%' }}>
-        {(Object.keys(tasks) as TaskStatus[]).map((columnId) => (
-          <Grid item xs={12} md={4} key={columnId} sx={{ height: '100%' }}>
-            <KanbanColumn
-              title={columnTitles[columnId]}
-              tasks={tasks[columnId]}
-              columnId={columnId}
-              onStatusChange={onStatusChange}
-            />
-          </Grid>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        {(Object.keys(tasks) as TaskStatus[]).map(status => (
+          <Paper key={status} variant="outlined" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Typography
+              variant="h6"
+              align="center"
+              sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}
+            >
+              {columnTitles[status]} ({tasks[status].length})
+            </Typography>
+            <Droppable droppableId={status}>
+              {(provided, snapshot) => (
+                <Box
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  sx={{
+                    flex: 1,
+                    p: 1,
+                    bgcolor: snapshot.isDraggingOver ? 'action.selected' : 'background.paper',
+                  }}
+                >
+                  {tasks[status].map((task, index) => (
+                    <Draggable key={task.id} draggableId={task.id} index={index}>
+                      {(prov, snap) => (
+                        <Box
+                          ref={prov.innerRef}
+                          {...prov.draggableProps}
+                          {...prov.dragHandleProps}
+                          sx={{
+                            mb: 1,
+                            p: 1,
+                            bgcolor: 'background.paper',
+                            boxShadow: snap.isDragging ? 4 : 1,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <KanbanTask task={task} index={index} onStatusChange={onStatusChange} />
+                        </Box>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </Box>
+              )}
+            </Droppable>
+          </Paper>
         ))}
-      </Grid>
-    </Box>
+      </Box>
+    </DragDropContext>
   );
 };
 

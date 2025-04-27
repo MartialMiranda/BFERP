@@ -161,7 +161,6 @@ const tasksSlice = createSlice({
       
       // Casos para updateTask
       .addCase(updateTask.pending, (state) => {
-        state.loading = true;
         state.error = null;
       })
       .addCase(updateTask.fulfilled, (state, action) => {

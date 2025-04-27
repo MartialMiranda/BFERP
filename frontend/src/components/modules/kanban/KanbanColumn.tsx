@@ -1,35 +1,38 @@
 'use client';
-
 import { Typography, Paper, Box } from '@mui/material';
-import KanbanTask from './KanbanTask';
 import { Task } from '@/types/task';
+import type { ReactNode } from 'react';
+import { useTheme } from '@mui/material/styles';
 
 // Tipo de estados de tareas (igual que en KanbanBoard)
 type TaskStatus = 'pendiente' | 'en progreso' | 'completada';
 
-interface KanbanColumnProps {
+export interface KanbanColumnProps {
   title: string;
   tasks: Task[];
   columnId: string;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
+  children?: ReactNode;
 }
 
-const getColumnColor = (columnId: string) => {
+const getColumnColor = (columnId: string, theme: any) => {
   switch (columnId) {
     case 'pendiente':
-      return '#FFF9C4'; // Amarillo claro
+      return theme.palette.warning.light;
     case 'en progreso':
-      return '#BBDEFB'; // Azul claro
+      return theme.palette.info.light;
     case 'completada':
-      return '#C8E6C9'; // Verde claro
+      return theme.palette.success.light;
     default:
-      return '#FFFFFF';
+      return theme.palette.background.paper;
   }
 };
 
-const KanbanColumn = ({ title, tasks, columnId, onStatusChange }: KanbanColumnProps) => {
+const KanbanColumn = ({ title, tasks, columnId, onStatusChange, children }: KanbanColumnProps) => {
+  const theme = useTheme();
+
   return (
-    <Box sx={{ width: '100%', height: '100%' }}>
+    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Paper 
         elevation={2} 
         sx={{ 
@@ -37,11 +40,11 @@ const KanbanColumn = ({ title, tasks, columnId, onStatusChange }: KanbanColumnPr
           height: '100%', 
           display: 'flex', 
           flexDirection: 'column',
-          bgcolor: getColumnColor(columnId),
+          bgcolor: getColumnColor(columnId, theme),
+          color: theme.palette.text.primary,
+          transition: 'background-color 0.3s, color 0.3s',
           borderTop: '5px solid',
-          borderColor: theme => theme.palette.mode === 'light' 
-            ? 'grey.400' 
-            : 'grey.700',
+          borderColor: theme.palette.divider,
         }}
       >
         <Typography 
@@ -66,14 +69,7 @@ const KanbanColumn = ({ title, tasks, columnId, onStatusChange }: KanbanColumnPr
             p: 1
           }}
         >
-          {tasks.map((task, index) => (
-            <KanbanTask 
-              key={task.id} 
-              task={task} 
-              index={index} 
-              onStatusChange={onStatusChange}
-            />
-          ))}
+          {children}
           
           {tasks.length === 0 && (
             <Box

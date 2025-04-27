@@ -48,6 +48,7 @@ async function execute(tareaId, datosActualizados, usuarioId) {
         (eu.usuario_id = $2 AND eu.rol = 'lider') OR 
         eu.usuario_id = $2
       )
+      LIMIT 1
     `, [tareaId, usuarioId]);
     
     if (!tarea) {
