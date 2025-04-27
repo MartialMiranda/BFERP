@@ -70,6 +70,7 @@ async function execute(tareaId, usuarioId) {
       LEFT JOIN equipos e ON pe.equipo_id = e.id
       LEFT JOIN usuarios u_asignado ON t.asignado_a = u_asignado.id
       WHERE t.id = $1
+      LIMIT 1
     `, [tareaId]);
     
     if (!tarea) {

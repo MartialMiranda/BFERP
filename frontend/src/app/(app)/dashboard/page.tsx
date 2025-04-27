@@ -62,9 +62,12 @@ export default function Dashboard() {
         }
         
         if (tasksResponse) {
-          setMyTasks(tasksResponse.tareas || []);
-          setTotalTasks(tasksResponse.paginacion?.total || 0);
-          setCompletedTasks(tasksResponse.tareas?.filter(t => t.estado === 'completada').length || 0);
+          const rawTasks = tasksResponse.tareas || [];
+          // Dedupe tasks by id
+          const uniqueTasks = Array.from(new Map(rawTasks.map(t => [t.id, t])).values());
+          setMyTasks(uniqueTasks);
+          setTotalTasks(uniqueTasks.length);
+          setCompletedTasks(uniqueTasks.filter(t => t.estado === 'completada').length);
         }
       } catch (error) {
         console.error('Error loading dashboard data:', error);

@@ -61,17 +61,21 @@ async function execute(tarea, usuarioId) {
       throw new Error('Equipo no encontrado o sin permisos para crear tarea');
     }
     
-    // Verificar que el usuario asignado pertenece al equipo (si se especifica)
+    // Verificar que el usuario asignado tiene acceso al proyecto (propietario o miembro)
     if (tarea.asignado_a) {
-      const miembroEquipo = await db.oneOrNone(`
-        SELECT 1 FROM equipo_usuarios 
-        WHERE equipo_id = $1 AND usuario_id = $2
+      const miembroProyecto = await db.oneOrNone(`
+        SELECT 1
+        FROM proyectos p
+        LEFT JOIN proyecto_equipos pe ON pe.proyecto_id = p.id
+        LEFT JOIN equipos e ON pe.equipo_id = e.id
+        LEFT JOIN equipo_usuarios eu ON eu.equipo_id = e.id
+        WHERE p.id = $1 AND (p.creado_por = $2 OR eu.usuario_id = $2)
         LIMIT 1
-      `, [tarea.equipo_id, tarea.asignado_a]);
-      
-      if (!miembroEquipo) {
-        logger.warn(`El usuario asignado no pertenece al equipo: ${tarea.asignado_a}`);
-        throw new Error('El usuario asignado no pertenece al equipo');
+      `, [equipo.proyecto_id, tarea.asignado_a]);
+
+      if (!miembroProyecto) {
+        logger.warn(`El usuario asignado no tiene acceso al proyecto: ${tarea.asignado_a}`);
+        throw new Error('El usuario asignado no tiene acceso al proyecto');
       }
     }
     

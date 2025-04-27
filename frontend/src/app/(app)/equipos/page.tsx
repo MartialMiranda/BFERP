@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
 import {
   fetchTeams,
+  fetchTeamById,
   createTeam,
   updateTeam,
   deleteTeam,
@@ -46,6 +47,11 @@ export default function EquiposPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toDelete, setToDelete] = useState<string | null>(null);
+  const [forceMode, setForceMode] = useState(false);
+  const [deleteTitle, setDeleteTitle] = useState('Eliminar Equipo');
+  const [deleteMessage, setDeleteMessage] = useState('¿Estás seguro de que deseas eliminar este equipo?');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('Eliminar');
+  const [deleteCancelText, setDeleteCancelText] = useState('Cancelar');
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -94,8 +100,11 @@ export default function EquiposPage() {
   };
 
   const handleEdit = (team: Team) => {
-    dispatch(setCurrentTeam(team));
-    setDialogOpen(true);
+    // Fetch full team (including members) before opening dialog
+    dispatch(fetchTeamById(team.id))
+      .unwrap()
+      .then(() => setDialogOpen(true))
+      .catch((msg) => dispatch(addNotification({ message: msg, severity: 'error' })));
   };
 
   const handleSave = (data: { nombre: string; descripcion?: string; proyecto_id: string; miembros?: string[] }) => {
@@ -122,19 +131,41 @@ export default function EquiposPage() {
 
   const handleDelete = (team: Team) => {
     setToDelete(team.id);
+    // Inicializar diálogo
+    setForceMode(false);
+    setDeleteTitle('Eliminar Equipo');
+    setDeleteMessage('¿Estás seguro de que deseas eliminar este equipo?');
+    setDeleteConfirmText('Eliminar');
+    setDeleteCancelText('Cancelar');
     setDeleteOpen(true);
   };
 
   const confirmDelete = () => {
     if (!toDelete) return;
-    dispatch(deleteTeam(toDelete))
+    dispatch(deleteTeam({ id: toDelete, force: forceMode }))
       .unwrap()
       .then(() => {
-        dispatch(addNotification({ message: 'Equipo eliminado', severity: 'success' }));
+        dispatch(addNotification({
+          message: forceMode ? 'Equipo eliminado forzosamente' : 'Equipo eliminado',
+          severity: 'success'
+        }));
         setDeleteOpen(false);
         setFilters({ ...filters });
       })
-      .catch((msg) => dispatch(addNotification({ message: msg, severity: 'error' })));
+      .catch((msg: string) => {
+        if (!forceMode && msg.includes('tareas asociadas')) {
+          // Cambiar a modo fuerza
+          setForceMode(true);
+          setDeleteTitle('Forzar eliminación');
+          setDeleteMessage(`${msg} ¿Deseas forzar la eliminación?`);
+          setDeleteConfirmText('Sí, forzar');
+          setDeleteCancelText('Cancelar');
+          // Mantener diálogo abierto
+        } else {
+          dispatch(addNotification({ message: msg, severity: 'error' }));
+          setDeleteOpen(false);
+        }
+      });
   };
 
   return (
@@ -167,6 +198,10 @@ export default function EquiposPage() {
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={confirmDelete}
+        title={deleteTitle}
+        message={deleteMessage}
+        confirmText={deleteConfirmText}
+        cancelText={deleteCancelText}
       />
     </Box>
   );

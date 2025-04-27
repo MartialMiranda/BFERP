@@ -60,14 +60,12 @@ async function execute(tarea, columnaId, usuarioId) {
       throw new Error('Sin permisos para modificar esta columna');
     }
     
-    // Determinar la posiciu00f3n para la nueva tarea en la columna
-    const ultimaPosicion = await db.oneOrNone(`
-      SELECT MAX(posicion) as max_posicion
-      FROM kanban_tareas
-      WHERE columna_id = $1
-    `, [columnaId]);
-    
-    const posicion = ultimaPosicion?.max_posicion ? ultimaPosicion.max_posicion + 1 : 0;
+    // Determinar la posición para la nueva tarea en la columna: COUNT() + 1
+    const { count } = await db.one(
+      `SELECT COUNT(*)::int as count FROM kanban_tareas WHERE columna_id = $1`,
+      [columnaId]
+    );
+    const posicion = count + 1;
     
     return await db.tx(async (t) => {
       // Primero crear la tarea en la tabla de tareas si es una tarea nueva

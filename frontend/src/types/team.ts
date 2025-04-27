@@ -15,6 +15,8 @@ export interface Team {
   actualizado_en: string;
   total_miembros?: number;
   total_tareas?: number;
+  // Miembros del equipo
+  miembros?: TeamMember[];
 }
 
 /**

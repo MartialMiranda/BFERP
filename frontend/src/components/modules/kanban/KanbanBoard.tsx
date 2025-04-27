@@ -4,6 +4,7 @@ import React from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import KanbanTask from './KanbanTask';
+import { kanbanService } from '@/services/kanbanService';
 import { Task } from '@/types/task';
 
 // Derive statuses from Task type
@@ -27,9 +28,27 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onStatusChange, onRefr
     if (!destination) return;
     const sourceCol = source.droppableId as TaskStatus;
     const destCol = destination.droppableId as TaskStatus;
-    if (sourceCol === destCol && source.index === destination.index) return;
+
+    if (sourceCol === destCol) {
+      if (source.index === destination.index) return;
+      // Persist reorder in DB
+      const ids = tasks[sourceCol].map(t => t.id);
+      const newOrder = Array.from(ids);
+      const [moved] = newOrder.splice(source.index, 1);
+      newOrder.splice(destination.index, 0, moved);
+      try {
+        await kanbanService.reorderTasks(sourceCol, newOrder);
+        onRefresh();
+      } catch (err) {
+        console.error(err);
+      }
+      return;
+    }
+
+    // Move to different column: update backend
     try {
       await onStatusChange(draggableId, destCol);
+      onRefresh();
     } catch (err) {
       console.error(err);
     }

@@ -8,6 +8,7 @@ import uiReducer from './slices/uiSlice';
 import projectsReducer from './slices/projectsSlice';
 import tasksReducer from './slices/tasksSlice';
 import teamsReducer from './slices/teamsSlice';
+import kanbanReducer from './slices/kanbanSlice';
 
 /**
  * Combined root reducer including all feature reducers
@@ -18,6 +19,7 @@ const rootReducer = combineReducers({
   projects: projectsReducer,
   tasks: tasksReducer,
   teams: teamsReducer,
+  kanban: kanbanReducer,
 });
 
 /**

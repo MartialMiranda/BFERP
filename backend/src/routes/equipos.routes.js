@@ -214,7 +214,8 @@ router.delete(
     try {
       logger.info(`Solicitud DELETE /api/equipos/${req.params.id} de usuario: ${req.user.id}`);
       
-      await eliminarEquipoCommand.execute(req.params.id, req.user.id);
+      const force = req.query.force === 'true';
+      await eliminarEquipoCommand.execute(req.params.id, req.user.id, force);
       
       res.json({ message: 'Equipo eliminado exitosamente' });
     } catch (error) {

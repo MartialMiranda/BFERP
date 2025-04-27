@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Container, Paper } from '@mui/material';
+import { Container, Paper, Typography } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store'; 
 import { selectUser as selectCurrentUser } from '@/store/slices/authSlice'; 
@@ -38,12 +38,16 @@ const TasksPage = () => {
   const { tasks, currentTask, loading, error, totalTasks } = useSelector((state: RootState) => state.tasks);
   const { projects: allProjects } = useSelector((state: RootState) => state.projects);
 
-  // ---> Verificación añadida <-----
-  if (typeof selectCurrentUser !== 'function') {
-    // Lanza un error claro si el selector no se importó correctamente
-    throw new Error("Error crítico: El selector 'selectCurrentUser' no se pudo importar o no es una función. Revisa la exportación en '@/store/slices/authSlice'.");
+  // Selector de usuario actual
+  const currentUser = useSelector(selectCurrentUser);
+  // Si no hay usuario, mostramos cargando
+  if (!currentUser) {
+    return (
+      <Container maxWidth="xl">
+        <Typography>Cargando usuario...</Typography>
+      </Container>
+    );
   }
-  const currentUser = useSelector(selectCurrentUser); // Obtener usuario actual
 
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -125,6 +129,11 @@ const TasksPage = () => {
     }
   }, [selectedProjectId]);
 
+  // Filter client-side by title
+  const displayedTasks = filters.titulo
+    ? tasks.filter(t => t.titulo.toLowerCase().includes((filters.titulo || '').toLowerCase()))
+    : tasks;
+
   // Options
   // Derivar opciones de proyectos desde Redux state
   const projectOptionsForForm = allProjects
@@ -137,8 +146,9 @@ const TasksPage = () => {
   const userOptionsForFilter = users.map(u => ({ value: u.id, label: u.nombre || u.email || '' }));
 
   // Handlers
-  const handleSearch = () => {
-    setFilters({ ...filters, titulo: searchTerm.trim(), pagina: 1 });
+  const handleSearch = (searchText: string) => {
+    console.log('TasksPage.handleSearch:', searchText);
+    setFilters(prev => ({ ...prev, titulo: searchText, pagina: 1 }));
   };
   const handleClear = () => {
     setSearchTerm('');
@@ -155,22 +165,33 @@ const TasksPage = () => {
     setFormOpen(true);
   };
   const handleViewTask = (id: string) => {
-    dispatch(fetchTaskById(id)).unwrap().then(() => setDetailsOpen(true));
+    console.log('TasksPage.handleViewTask id:', id);
+    dispatch(fetchTaskById(id)).unwrap().then(() => {
+      console.log('TasksPage.handleViewTask fetched');
+      setDetailsOpen(true);
+    });
   };
   const handleEditTask = (id: string) => {
+    console.log('TasksPage.handleEditTask id:', id);
     dispatch(fetchTaskById(id)).unwrap().then((taskData) => {
-        if (taskData?.proyecto_id) {
-          setSelectedProjectId(taskData.proyecto_id); // Establecer proyecto al editar
-        } else {
-          setSelectedProjectId(null);
-          setProjectMembers([]);
-          setTeamOptions([]);
-        }
-        setFormOpen(true);
+      // Load into form state
+      dispatch(setCurrentTask(taskData));
+      if (taskData?.proyecto_id) {
+        setSelectedProjectId(taskData.proyecto_id);
+      } else {
+        setSelectedProjectId(null);
+        setProjectMembers([]);
+        setTeamOptions([]);
+      }
+      setFormOpen(true);
     });
   };
   const handleDeletePrompt = (id: string) => {
-    dispatch(fetchTaskById(id)).unwrap().then(() => setDeleteDialogOpen(true));
+    console.log('TasksPage.handleDeletePrompt id:', id);
+    dispatch(fetchTaskById(id)).unwrap().then(() => {
+      console.log('TasksPage.handleDeletePrompt fetched');
+      setDeleteDialogOpen(true);
+    });
   };
   const handleDeleteTask = () => {
     if (!currentTask) return;
@@ -193,10 +214,12 @@ const TasksPage = () => {
       .then(() => {
         dispatch(addNotification({ message: `Tarea ${currentTask ? 'actualizada' : 'creada'} con éxito`, severity: 'success' }));
         setFormOpen(false);
-        setSelectedProjectId(null); // Limpiar estado al guardar
+        // Reset states
+        dispatch(setCurrentTask(null));
+        setSelectedProjectId(null);
         setProjectMembers([]);
         setTeamOptions([]);
-        setFilters({ ...filters }); // Refrescar lista
+        setFilters({ ...filters });
       })
       .catch((msg: string) => dispatch(addNotification({ message: msg, severity: 'error' })))
       .finally(() => setFormLoading(false));
@@ -229,13 +252,13 @@ const TasksPage = () => {
       <TasksStatus 
         loading={loading}
         error={error}
-        tasksCount={tasks.length}
+        tasksCount={displayedTasks.length}
         totalTasks={totalTasks}
       />
       
       {/* Lista de tareas */}
       <TaskList
-        tasks={tasks}
+        tasks={displayedTasks}
         loading={loading}
         onViewTask={handleViewTask}
         onEditTask={handleEditTask}

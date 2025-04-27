@@ -35,7 +35,8 @@ export const teamService = {
     return response.data;
   },
 
-  async deleteTeam(id: string): Promise<void> {
-    await apiClient.delete(`/equipos/${id}`);
+  async deleteTeam(id: string, force: boolean = false): Promise<void> {
+    // Force deletion if specified
+    await apiClient.delete(`/equipos/${id}`, { params: { force } });
   },
 };

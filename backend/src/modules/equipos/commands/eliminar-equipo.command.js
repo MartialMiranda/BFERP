@@ -28,9 +28,10 @@ if (process.env.NODE_ENV !== 'production') {
  * Ejecuta el comando para eliminar un equipo existente
  * @param {string} equipoId - ID del equipo a eliminar
  * @param {string} usuarioId - ID del usuario que realiza la eliminación
+ * @param {boolean} force - Indica si se debe forzar la eliminación (omitir verificación de tareas)
  * @returns {Promise<boolean>} - true si se eliminó correctamente
  */
-async function execute(equipoId, usuarioId) {
+async function execute(equipoId, usuarioId, force = false) {
   try {
     logger.info(`Eliminando equipo: ${equipoId} por usuario: ${usuarioId}`);
     
@@ -57,7 +58,8 @@ async function execute(equipoId, usuarioId) {
       WHERE pe.equipo_id = $1
     `, [equipoId]);
     
-    if (parseInt(tareasEquipo.total) > 0) {
+    // Si no es borrado forzado, bloquear si hay tareas asociadas
+    if (!force && parseInt(tareasEquipo.total) > 0) {
       logger.warn(`No se puede eliminar equipo con tareas pendientes: ${equipoId}`);
       throw new Error(`No se puede eliminar el equipo porque tiene ${tareasEquipo.total} tareas asociadas. Reasigne o elimine las tareas primero.`);
     }

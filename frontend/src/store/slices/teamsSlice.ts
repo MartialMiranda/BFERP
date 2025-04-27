@@ -79,14 +79,20 @@ export const updateTeam = createAsyncThunk(
 
 export const deleteTeam = createAsyncThunk(
   'teams/deleteTeam',
-  async (teamId: string, { rejectWithValue }) => {
+  async (
+    { id, force = false }: { id: string; force?: boolean },
+    { rejectWithValue }
+  ) => {
     try {
-      await teamService.deleteTeam(teamId);
-      return teamId;
+      await teamService.deleteTeam(id, force);
+      return id;
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Error al eliminar el equipo'
-      );
+      // Use error response 'error' field if present
+      const msg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Error al eliminar el equipo';
+      return rejectWithValue(msg);
     }
   }
 );

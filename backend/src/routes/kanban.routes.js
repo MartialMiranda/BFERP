@@ -17,6 +17,7 @@ const crearTareaCommand = require('../modules/kanban/commands/crear-tarea.comman
 const actualizarTareaCommand = require('../modules/kanban/commands/actualizar-tarea.command');
 const eliminarTareaCommand = require('../modules/kanban/commands/eliminar-tarea.command');
 const obtenerTareaQuery = require('../modules/kanban/queries/obtener-tarea.query');
+const reordenarTareasCommand = require('../modules/kanban/commands/reordenar-tareas.command');
 
 const { verifyToken } = require('../middleware/auth.middleware');
 const winston = require('winston');
@@ -391,6 +392,36 @@ router.delete(
       }
       
       res.status(500).json({ error: 'Error al eliminar la tarea' });
+    }
+  }
+);
+
+// ===== Reordenar tareas en una columna =====
+router.post(
+  '/columnas/:columnaId/reordenar',
+  verifyToken,
+  [
+    param('columnaId').isUUID().withMessage('ID de columna inválido'),
+    body('orderedIds').isArray().withMessage('orderedIds debe ser un array de IDs'),
+    body('orderedIds.*').isUUID().withMessage('Cada ID debe ser UUID válido')
+  ],
+  validarErrores,
+  async (req, res) => {
+    try {
+      logger.info(`Solicitud POST /api/kanban/columnas/${req.params.columnaId}/reordenar de usuario: ${req.user.id}`);
+      
+      const { orderedIds } = req.body;
+      const result = await reordenarTareasCommand.execute(req.params.columnaId, orderedIds, req.user.id);
+      
+      res.json(result);
+    } catch (error) {
+      logger.error(`Error en POST /api/kanban/columnas/${req.params.columnaId}/reordenar: ${error.message}`);
+      
+      if (error.message.includes('permisos')) {
+        return res.status(403).json({ error: error.message });
+      }
+      
+      res.status(500).json({ error: 'Error al reordenar tareas de la columna' });
     }
   }
 );

@@ -102,13 +102,23 @@ export const kanbanService = {
   },
 
   /**
+   * Bulk reorder tasks in a column based on an ordered list of IDs
+   */
+  async bulkReorder(columnId: string, orderedIds: string[]): Promise<any> {
+    const response = await apiClient.post(
+      `/kanban/columnas/${columnId}/reordenar`,
+      { orderedIds }
+    );
+    return response.data;
+  },
+
+  /**
    * Reorder tasks within a column by updating each task's position
    */
-  async reorderTasks(columnId: string, taskIds: string[]): Promise<any> {
-    // Update each task's position via updateTask
-    const updates = taskIds.map((id, index) =>
-      this.updateTask(id, { posicion: index })
-    );
-    return Promise.all(updates);
+  async reorderTasks(columnId: string, taskIds: string[]): Promise<void> {
+    // Update each task's position sequentially to prevent DB deadlocks
+    for (const [index, id] of taskIds.entries()) {
+      await this.updateTask(id, { posicion: index });
+    }
   },
 };

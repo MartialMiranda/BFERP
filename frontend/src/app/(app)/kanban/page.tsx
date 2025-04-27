@@ -124,6 +124,7 @@ export default function KanbanPage() {
           tasks={groupedTasks}
           onStatusChange={handleStatusChange}
           onRefresh={handleRefresh}
+          projectId={filters.projectId}
         />
       )}
     </Container>

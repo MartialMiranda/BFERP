@@ -1,5 +1,7 @@
+'use client';
+
 import React from 'react';
-import { Box, Typography, Alert, AlertTitle, CircularProgress } from '@mui/material';
+import { Box, Typography, Alert, AlertTitle } from '@mui/material';
 
 interface TasksStatusProps {
   loading: boolean;
@@ -19,13 +21,6 @@ const TasksStatus: React.FC<TasksStatusProps> = ({
 }) => {
   return (
     <>
-      {/* Indicador de carga */}
-      {loading && (
-        <Box className="p-6 text-center">
-          <CircularProgress />
-        </Box>
-      )}
-      
       {/* Mensaje de error */}
       {error && (
         <Alert severity="error" className="mb-4">

@@ -46,6 +46,7 @@ async function execute(tareaId, usuarioId) {
       WHERE t.id = $1 AND (
         (eu.usuario_id = $2 AND eu.rol = 'lider')
       )
+      LIMIT 1
     `, [tareaId, usuarioId]);
     
     if (!tarea) {

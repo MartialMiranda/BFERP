@@ -1,11 +1,11 @@
 /**
  * Comando para actualizar una tarea Kanban existente
- * Siguiendo el patru00f3n CQRS para separar operaciones de escritura
+ * Siguiendo el patrón CQRS para separar operaciones de escritura
  */
 const { db } = require('../../../config/database');
 const winston = require('winston');
 
-// Configuraciu00f3n del logger
+// Configuración del logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -35,14 +35,21 @@ async function execute(kanbanTareaId, datosActualizados, usuarioId) {
   try {
     logger.info(`Actualizando tarea kanban ID: ${kanbanTareaId} por usuario: ${usuarioId}`);
     
-    // Verificar que la tarea kanban existe
-    const tareaKanban = await db.oneOrNone(`
+    // Intentar encontrar la tarea kanban por id de registro o por id de tarea
+    let tareaKanban = await db.oneOrNone(`
       SELECT kt.*, t.proyecto_id
       FROM kanban_tareas kt
       JOIN tareas t ON kt.tarea_id = t.id
       WHERE kt.id = $1
     `, [kanbanTareaId]);
-    
+    if (!tareaKanban) {
+      tareaKanban = await db.oneOrNone(`
+        SELECT kt.*, t.proyecto_id
+        FROM kanban_tareas kt
+        JOIN tareas t ON kt.tarea_id = t.id
+        WHERE kt.tarea_id = $1
+      `, [kanbanTareaId]);
+    }
     if (!tareaKanban) {
       logger.warn(`Tarea kanban no encontrada: ${kanbanTareaId}`);
       throw new Error('Tarea kanban no encontrada');
@@ -103,12 +110,12 @@ async function execute(kanbanTareaId, datosActualizados, usuarioId) {
           UPDATE kanban_tareas 
           SET columna_id = $1, posicion = $2 
           WHERE id = $3
-        `, [datosActualizados.columna_id, nuevaPosicion, kanbanTareaId]);
+        `, [datosActualizados.columna_id, nuevaPosicion, tareaKanban.id]);
         
-        // Reordenar las posiciones en la columna original
+        // Reordenar las posiciones en la columna original (inicio en 1)
         await t.none(`
           WITH tareas_ordenadas AS (
-            SELECT id, ROW_NUMBER() OVER (ORDER BY posicion) - 1 as nueva_posicion
+            SELECT id, ROW_NUMBER() OVER (ORDER BY posicion) AS nueva_posicion
             FROM kanban_tareas
             WHERE columna_id = $1
           )
@@ -117,13 +124,40 @@ async function execute(kanbanTareaId, datosActualizados, usuarioId) {
           FROM tareas_ordenadas tord
           WHERE kt.id = tord.id
         `, [tareaKanban.columna_id]);
+        
+        // Reordenar las tareas en la columna de destino (inicio en 1)
+        await t.none(
+          `WITH tareas_ordenadas_dest AS (
+             SELECT id, ROW_NUMBER() OVER (ORDER BY posicion) AS nueva_posicion
+             FROM kanban_tareas
+             WHERE columna_id = $1
+           )
+           UPDATE kanban_tareas kt
+           SET posicion = tord.nueva_posicion
+           FROM tareas_ordenadas_dest tord
+           WHERE kt.id = tord.id`,
+          [datosActualizados.columna_id]
+        );
       } else if (datosActualizados.posicion !== undefined) {
-        // Solo se estu00e1 cambiando la posiciu00f3n dentro de la misma columna
-        await t.none(`
-          UPDATE kanban_tareas 
-          SET posicion = $1 
-          WHERE id = $2
-        `, [datosActualizados.posicion, kanbanTareaId]);
+        // Solo cambiando posición dentro de la misma columna: actualizar y reordenar (inicio en 1)
+        // Actualizar posición de la tarea movida (+1 al índice)
+        await t.none(
+          `UPDATE kanban_tareas SET posicion = $1 WHERE id = $2`,
+          [datosActualizados.posicion + 1, tareaKanban.id]
+        );
+        // Reordenar todas las tareas en la columna para posiciones consecutivas
+        await t.none(
+          `WITH tareas_ordenadas AS (
+             SELECT id, ROW_NUMBER() OVER (ORDER BY posicion) AS nueva_posicion
+             FROM kanban_tareas
+             WHERE columna_id = $1
+           )
+           UPDATE kanban_tareas kt
+           SET posicion = tord.nueva_posicion
+           FROM tareas_ordenadas tord
+           WHERE kt.id = tord.id`,
+          [tareaKanban.columna_id]
+        );
       }
       
       // Si hay actualizaciones para la tarea en su00ed (no solo su posiciu00f3n en el kanban)
@@ -185,7 +219,7 @@ async function execute(kanbanTareaId, datosActualizados, usuarioId) {
         JOIN tareas t ON kt.tarea_id = t.id
         LEFT JOIN usuarios u ON t.asignado_a = u.id
         WHERE kt.id = $1
-      `, [kanbanTareaId]);
+      `, [tareaKanban.id]);
       
       logger.info(`Tarea kanban actualizada exitosamente: ID=${kanbanTareaId}`);
       

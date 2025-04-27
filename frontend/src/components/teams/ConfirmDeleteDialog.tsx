@@ -4,18 +4,30 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  cancelText?: string;
 }
 
-export default function ConfirmDeleteDialog({ open, onClose, onConfirm }: Props) {
+export default function ConfirmDeleteDialog({
+  open,
+  onClose,
+  onConfirm,
+  title = 'Eliminar Equipo',
+  message = '¿Estás seguro de que deseas eliminar este equipo?',
+  confirmText = 'Eliminar',
+  cancelText = 'Cancelar',
+}: Props) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs">
-      <DialogTitle>Eliminar Equipo</DialogTitle>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        <Typography>¿Estás seguro de que deseas eliminar este equipo?</Typography>
+        <Typography>{message}</Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button onClick={onConfirm} color="error" variant="contained">Eliminar</Button>
+        <Button onClick={onClose}>{cancelText}</Button>
+        <Button onClick={onConfirm} color="error" variant="contained">{confirmText}</Button>
       </DialogActions>
     </Dialog>
   );

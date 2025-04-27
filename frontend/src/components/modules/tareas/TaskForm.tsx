@@ -121,7 +121,7 @@ const TaskForm = ({
         proyecto_id: defaultProjectId,
         equipo_id: task?.equipo_id || '',
         fecha_vencimiento: task?.fecha_vencimiento ? dayjs(task.fecha_vencimiento).toDate() : null,
-        asignado_a: (task?.proyecto_id === defaultProjectId && task?.asignado_a) ? task.asignado_a : '',
+        asignado_a: task?.asignado_a || '',
       });
       setSelectedDate(task?.fecha_vencimiento ? dayjs(task.fecha_vencimiento) : null);
       onProjectChange?.(defaultProjectId || null);
@@ -129,19 +129,16 @@ const TaskForm = ({
   }, [open, task, reset]);
 
   useEffect(() => {
-    const currentAssignee = watch('asignado_a');
-    if (currentAssignee) {
-      const isValidAssignee = users.some(user => user.id === currentAssignee);
-      if (!isValidAssignee) {
-        setValue('asignado_a', ''); // Clear if the current assignee is no longer valid
-      }
+    if (open && task && teamOptions.length > 0) {
+      setValue('equipo_id', task.equipo_id || '');
     }
-  }, [selectedProjectId, users, setValue, watch]);
+  }, [open, task, teamOptions, setValue]);
 
   useEffect(() => {
-    // Also clear team selection when project changes
-    setValue('equipo_id', '');
-  }, [selectedProjectId, setValue]);
+    if (open && task && users.length > 0) {
+      setValue('asignado_a', task.asignado_a || '');
+    }
+  }, [open, task, users, setValue]);
 
   const onSubmit = (data: TaskFormInputs) => {
     if (task) {
@@ -249,11 +246,12 @@ const TaskForm = ({
                       label="Proyecto"
                       onChange={(e) => {
                         const newProjectId = (e.target as HTMLInputElement).value;
-                        // Update form value to selected project
+                        // Update selected project
                         field.onChange(newProjectId);
-                        // Clear team selection when project changes
+                        // Clear team and assignee when project changes
                         setValue('equipo_id', '');
-                        // Notify parent to fetch members/teams
+                        setValue('asignado_a', '');
+                        // Notify parent to load members/teams
                         onProjectChange?.(newProjectId);
                       }}
                     >
