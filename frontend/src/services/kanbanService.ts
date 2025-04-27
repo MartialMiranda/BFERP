@@ -91,23 +91,24 @@ export const kanbanService = {
   },
 
   /**
-   * Move a task to a different column or position
-   * @param moveRequest - Task movement data
-   * @returns The updated task position
+   * Move a task by updating its column and position
    */
-  async moveTask(moveRequest: MoveTaskRequest): Promise<any> {
-    const response = await apiClient.post('/kanban/tareas/mover', moveRequest);
-    return response.data;
+  async moveTask({ tarea_id, columna_destino_id, posicion_destino }: MoveTaskRequest): Promise<any> {
+    // Use updateTask endpoint to move task
+    return this.updateTask(tarea_id, {
+      columna_id: columna_destino_id,
+      posicion: posicion_destino,
+    });
   },
-  
+
   /**
-   * Reorder tasks within a column
-   * @param columnId - Column ID
-   * @param taskIds - Ordered array of task IDs
-   * @returns Updated column with reordered tasks
+   * Reorder tasks within a column by updating each task's position
    */
   async reorderTasks(columnId: string, taskIds: string[]): Promise<any> {
-    const response = await apiClient.post(`/kanban/columnas/${columnId}/reordenar`, { tareas: taskIds });
-    return response.data;
+    // Update each task's position via updateTask
+    const updates = taskIds.map((id, index) =>
+      this.updateTask(id, { posicion: index })
+    );
+    return Promise.all(updates);
   },
 };

@@ -1,5 +1,5 @@
 /**
- * Rutas para el mu00f3dulo de Kanban
+ * Rutas para el módulo de Kanban
  * Maneja todas las operaciones REST relacionadas con columnas y tareas kanban
  */
 const express = require('express');
@@ -24,7 +24,7 @@ const winston = require('winston');
 // Crear router
 const router = express.Router();
 
-// Configuraciu00f3n del logger
+// Configuración del logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -66,7 +66,7 @@ router.get(
   '/columnas/proyecto/:proyectoId',
   verifyToken,
   [
-    param('proyectoId').isUUID().withMessage('ID de proyecto invu00e1lido')
+    param('proyectoId').isUUID().withMessage('ID de proyecto inválido')
   ],
   validarErrores,
   async (req, res) => {
@@ -129,8 +129,8 @@ router.post(
   verifyToken,
   [
     body('nombre').notEmpty().withMessage('El nombre es obligatorio').isLength({ max: 255 }).withMessage('El nombre no puede exceder 255 caracteres'),
-    body('proyecto_id').isUUID().withMessage('ID de proyecto invu00e1lido'),
-    body('posicion').optional().isInt({ min: 0 }).withMessage('La posiciu00f3n debe ser un nu00famero entero no negativo')
+    body('proyecto_id').isUUID().withMessage('ID de proyecto inválido'),
+    body('posicion').optional().isInt({ min: 0 }).withMessage('La posición debe ser un número entero no negativo')
   ],
   validarErrores,
   async (req, res) => {
@@ -168,9 +168,9 @@ router.put(
   '/columnas/:id',
   verifyToken,
   [
-    param('id').isUUID().withMessage('ID de columna invalido'),
+    param('id').isUUID().withMessage('ID de columna inválido'),
     body('nombre').optional().isLength({ max: 255 }).withMessage('El nombre no puede exceder 255 caracteres'),
-    body('posicion').optional().isInt({ min: 0 }).withMessage('La posicion debe ser un numero entero no negativo')
+    body('posicion').optional().isInt({ min: 0 }).withMessage('La posición debe ser un número entero no negativo')
   ],
   validarErrores,
   async (req, res) => {
@@ -209,7 +209,7 @@ router.delete(
   '/columnas/:id',
   verifyToken,
   [
-    param('id').isUUID().withMessage('ID de columna invu00e1lido')
+    param('id').isUUID().withMessage('ID de columna inválido')
   ],
   validarErrores,
   async (req, res) => {
@@ -246,7 +246,7 @@ router.get(
   '/tareas/:id',
   verifyToken,
   [
-    param('id').isUUID().withMessage('ID de tarea invu00e1lido')
+    param('id').isUUID().withMessage('ID de tarea inválido')
   ],
   validarErrores,
   async (req, res) => {
@@ -277,14 +277,14 @@ router.post(
   '/tareas',
   verifyToken,
   [
-    body('columna_id').isUUID().withMessage('ID de columna invalido'),
+    body('columna_id').isUUID().withMessage('ID de columna inválido'),
     body('descripcion').optional(),
-    body('prioridad').optional().isIn(['baja', 'media', 'alta', 'urgente']).withMessage('Prioridad invalido'),
-    body('estado').optional().isIn(['pendiente', 'en progreso', 'completada', 'cancelada']).withMessage('Estado invalido'),
-    body('fecha_vencimiento').optional().isDate().withMessage('Formato de fecha invalido'),
-    body('asignado_a').optional().isUUID().withMessage('ID de usuario invalido'),
-    body('posicion').optional().isInt({ min: 0 }).withMessage('La posision debe ser un numero entero no negativo'),
-    body('tarea_id').optional().isUUID().withMessage('ID de tarea invalido')
+    body('prioridad').optional().isIn(['baja', 'media', 'alta', 'urgente']).withMessage('Prioridad inválido'),
+    body('estado').optional().isIn(['pendiente', 'en progreso', 'completada', 'cancelada']).withMessage('Estado inválido'),
+    body('fecha_vencimiento').optional().isDate().withMessage('Formato de fecha inválido'),
+    body('asignado_a').optional().isUUID().withMessage('ID de usuario inválido'),
+    body('posicion').optional().isInt({ min: 0 }).withMessage('La posición debe ser un número entero no negativo'),
+    body('tarea_id').optional().isUUID().withMessage('ID de tarea inválido')
   ],
   validarErrores,
   async (req, res) => {
@@ -323,11 +323,11 @@ router.put(
     body('columna_id').optional().isUUID().withMessage('ID de columna invu00e1lido'),
     body('titulo').optional().isLength({ max: 255 }).withMessage('El tu00edtulo no puede exceder 255 caracteres'),
     body('descripcion').optional(),
-    body('prioridad').optional().isIn(['baja', 'media', 'alta', 'urgente']).withMessage('Prioridad invu00e1lida'),
-    body('estado').optional().isIn(['pendiente', 'en progreso', 'completada', 'cancelada']).withMessage('Estado invu00e1lido'),
-    body('fecha_vencimiento').optional().isDate().withMessage('Formato de fecha invu00e1lido'),
-    body('asignado_a').optional().isUUID().withMessage('ID de usuario invu00e1lido'),
-    body('posicion').optional().isInt({ min: 0 }).withMessage('La posiciu00f3n debe ser un nu00famero entero no negativo')
+    body('prioridad').optional().isIn(['baja', 'media', 'alta', 'urgente']).withMessage('Prioridad inválida'),
+    body('estado').optional().isIn(['pendiente', 'en progreso', 'completada', 'cancelada']).withMessage('Estado inválido'),
+    body('fecha_vencimiento').optional().isDate().withMessage('Formato de fecha inválido'),
+    body('asignado_a').optional().isUUID().withMessage('ID de usuario inválido'),
+    body('posicion').optional().isInt({ min: 0 }).withMessage('La posición debe ser un número entero no negativo')
   ],
   validarErrores,
   async (req, res) => {
@@ -366,7 +366,7 @@ router.delete(
   '/tareas/:id',
   verifyToken,
   [
-    param('id').isUUID().withMessage('ID de tarea invu00e1lido'),
+    param('id').isUUID().withMessage('ID de tarea inválido'),
     query('eliminar_completa').optional().isBoolean().withMessage('eliminar_completa debe ser un valor booleano')
   ],
   validarErrores,

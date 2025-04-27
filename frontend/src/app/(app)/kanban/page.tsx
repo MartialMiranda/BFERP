@@ -11,6 +11,9 @@ import { fetchProjects } from '@/store/slices/projectsSlice';
 import PageHeader from '@/components/common/PageHeader';
 import { Task, TaskFilters } from '@/types/task';
 
+// Derive TaskStatus from Task interface
+type TaskStatus = Task['estado'];
+
 interface FilterState {
   projectId: string;
   priority: 'baja' | 'media' | 'alta' | '';
@@ -29,12 +32,19 @@ export default function KanbanPage() {
     search: ''
   });
 
-  // Cargar tareas y proyectos al montar el componente
+  // Cargar proyectos al montar el componente
   useEffect(() => {
-    const initialFilters: TaskFilters = {};
-    dispatch(fetchTasks(initialFilters));
     dispatch(fetchProjects({}));
   }, [dispatch]);
+
+  // Fetch tasks when a project is selected
+  useEffect(() => {
+    if (filters.projectId) {
+      dispatch(fetchTasks({ proyecto_id: filters.projectId }));
+    } else {
+      setFilteredTasks([]);
+    }
+  }, [filters.projectId, dispatch]);
 
   // Aplicar filtros cuando cambien las tareas o los filtros
   useEffect(() => {
@@ -64,13 +74,15 @@ export default function KanbanPage() {
   }, [tasks, filters]);
 
   // Manejar el cambio de estado de una tarea
-  const handleStatusChange = (taskId: string, newStatus: string) => {
-    const validStatus = newStatus as 'pendiente' | 'en progreso' | 'completada' | 'bloqueada';
-    
-    dispatch(updateTask({
-      id: taskId, 
-      estado: validStatus
-    }));
+  const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
+    dispatch(updateTask({ id: taskId, estado: newStatus }));
+  };
+
+  // Refrescar tareas desde el backend tras mover o reordenar
+  const handleRefresh = () => {
+    if (filters.projectId) {
+      dispatch(fetchTasks({ proyecto_id: filters.projectId }));
+    }
   };
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
@@ -78,10 +90,11 @@ export default function KanbanPage() {
   };
 
   // Agrupar tareas por estado
-  const groupedTasks = {
+  const groupedTasks: Record<TaskStatus, Task[]> = {
     pendiente: filteredTasks.filter(task => task.estado === 'pendiente'),
     'en progreso': filteredTasks.filter(task => task.estado === 'en progreso'),
-    completada: filteredTasks.filter(task => task.estado === 'completada')
+    completada: filteredTasks.filter(task => task.estado === 'completada'),
+    bloqueada: filteredTasks.filter(task => task.estado === 'bloqueada')
   };
 
   return (
@@ -102,8 +115,16 @@ export default function KanbanPage() {
         <Alert severity="error" sx={{ mt: 2 }}>
           Error al cargar las tareas: {error}
         </Alert>
+      ) : !filters.projectId ? (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Seleccione un proyecto para ver el tablero
+        </Alert>
       ) : (
-        <KanbanBoard tasks={groupedTasks} onStatusChange={handleStatusChange} />
+        <KanbanBoard
+          tasks={groupedTasks}
+          onStatusChange={handleStatusChange}
+          onRefresh={handleRefresh}
+        />
       )}
     </Container>
   );
